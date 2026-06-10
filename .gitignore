@@ -1,0 +1,9 @@
+# Frontend Angular
+**/node_modules/
+**/.angular/
+
+# Backend (por si acaso)
+__pycache__/
+*.pyc
+.env
+venv/
