@@ -21,6 +21,10 @@ export const routes: Routes = [
             {
                 path: 'register',
                 loadComponent: () => import('./components/auth/register.component').then(c => c.RegisterComponent)
+            },
+            {
+                path: 'privacy-policy',
+                loadComponent: () => import('./components/privacy-policy/privacy-policy').then(c => c.PrivacyPolicy)
             }
         ]
     },

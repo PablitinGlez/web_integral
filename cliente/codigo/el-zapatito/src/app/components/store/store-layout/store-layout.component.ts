@@ -33,8 +33,11 @@ import { AuthService } from '../../../services/auth.service';
       <router-outlet></router-outlet>
     </main>
     <footer>
-      <p>&copy; 2026 El Zapatito - Minimalist Storefront</p>
-    </footer>
+  <p>&copy; 2026 El Zapatito - Minimalist Storefront</p>
+  <a routerLink="/privacy-policy" class="privacy-link">
+  Aviso de Privacidad
+</a>
+</footer>
   `,
   styles: [`
     .minimal-nav { 
@@ -49,6 +52,17 @@ import { AuthService } from '../../../services/auth.service';
       background: #fff;
       z-index: 100;
     }
+      .privacy-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  text-decoration: none;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.privacy-link:hover {
+  text-decoration: underline;
+}
     h1 a { text-decoration: none; color: #000; letter-spacing: -1px; display: flex; align-items: center; }
     .main-logo { height: 50px; width: auto; display: block; }
     .links { display: flex; align-items: center; gap: 1.5rem; }
