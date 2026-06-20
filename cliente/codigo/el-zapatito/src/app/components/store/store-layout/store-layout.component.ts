@@ -16,6 +16,7 @@ import { AuthService } from '../../../services/auth.service';
       </h1>
       <div class="links">
         <a routerLink="/catalog">Catálogo</a>
+        <a routerLink="/about">Quiénes Somos</a>
         
         @if (auth.isAdmin()) {
           <a routerLink="/admin" class="admin-panel-btn">Panel Admin</a>
