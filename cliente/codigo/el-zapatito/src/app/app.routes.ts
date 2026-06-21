@@ -15,6 +15,10 @@ export const routes: Routes = [
                 loadComponent: () => import('./components/store/catalog/catalog.component').then(c => c.CatalogComponent)
             },
             {
+                path: 'about',
+                loadComponent: () => import('./components/store/about/about.component').then(c => c.AboutComponent)
+            },
+            {
                 path: 'login',
                 loadComponent: () => import('./components/auth/login.component').then(c => c.LoginComponent)
             },
@@ -25,6 +29,10 @@ export const routes: Routes = [
             {
                 path: 'privacy-policy',
                 loadComponent: () => import('./components/privacy-policy/privacy-policy').then(c => c.PrivacyPolicy)
+            },
+            {
+                path: 'profile',
+                loadComponent: () => import('./components/auth/profile.component').then(c => c.ProfileComponent)
             }
         ]
     },
@@ -40,6 +48,10 @@ export const routes: Routes = [
             {
                 path: 'add-product',
                 loadComponent: () => import('./components/admin/add-product/add-product.component').then(c => c.AddProductComponent)
+            },
+            {
+                path: 'categories',
+                loadComponent: () => import('./components/admin/categories/categories.component').then(c => c.CategoriesComponent)
             },
             {
                 path: 'products',

@@ -25,11 +25,11 @@ import { CommonModule } from '@angular/common';
 
           <div class="nav-section">
             <span class="nav-label">Catálogo</span>
+            <a routerLink="/admin/categories" routerLinkActive="active">
+              <span class="material-icons">category</span> Categorías
+            </a>
             <a routerLink="/admin/products" routerLinkActive="active">
               <span class="material-icons">style</span> Productos
-            </a>
-            <a routerLink="/admin/add-product" routerLinkActive="active">
-              <span class="material-icons">add_box</span> Añadir Producto
             </a>
             <a routerLink="/admin/inventory" routerLinkActive="active">
               <span class="material-icons">inventory</span> Inventario
