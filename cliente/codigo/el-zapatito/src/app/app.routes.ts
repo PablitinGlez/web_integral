@@ -29,6 +29,10 @@ export const routes: Routes = [
             {
                 path: 'privacy-policy',
                 loadComponent: () => import('./components/privacy-policy/privacy-policy').then(c => c.PrivacyPolicy)
+            },
+            {
+                path: 'profile',
+                loadComponent: () => import('./components/auth/profile.component').then(c => c.ProfileComponent)
             }
         ]
     },
@@ -44,6 +48,10 @@ export const routes: Routes = [
             {
                 path: 'add-product',
                 loadComponent: () => import('./components/admin/add-product/add-product.component').then(c => c.AddProductComponent)
+            },
+            {
+                path: 'categories',
+                loadComponent: () => import('./components/admin/categories/categories.component').then(c => c.CategoriesComponent)
             },
             {
                 path: 'products',
