@@ -8,6 +8,9 @@ class UserBase(BaseModel):
     full_name: Optional[str] = None
     role: str = "user"
 
+class UserCreate(UserBase):
+    password: str
+
 class User(UserBase):
     id: UUID
     is_active: bool
