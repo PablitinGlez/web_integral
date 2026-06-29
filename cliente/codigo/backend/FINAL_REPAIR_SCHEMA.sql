@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
 DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;
+DROP TABLE IF EXISTS brands CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
 -- 2. Crear tablas con el esquema CORRECTO para SQLAlchemy
@@ -30,10 +31,18 @@ CREATE TABLE categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE brands (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(255) NOT NULL,
-    brand VARCHAR(100),
+    brand_id UUID REFERENCES brands(id) ON DELETE SET NULL,
     description TEXT,
     price NUMERIC(10, 2) NOT NULL,
     base_price NUMERIC(10, 2),
