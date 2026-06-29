@@ -4,6 +4,7 @@ from typing import List, Optional
 from uuid import UUID
 from ..database import get_db
 from ..models import product as product_model
+from ..models import brand as brand_model
 from ..schemas import product as product_schema
 from ..services.cloudinary_service import CloudinaryService
 
@@ -37,10 +38,29 @@ async def create_product(
     if not image_url:
         raise HTTPException(status_code=500, detail="Error al subir la imagen")
 
+    # Resolver brand_id
+    brand_id = None
+    if brand:
+        # Verificar si brand es un UUID válido
+        is_uuid = False
+        try:
+            UUID(brand)
+            is_uuid = True
+        except ValueError:
+            is_uuid = False
+
+        if is_uuid:
+            db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand).first()
+        else:
+            db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.name == brand).first()
+        
+        if db_brand:
+            brand_id = db_brand.id
+
     # 2. Crear producto en DB
     new_product = product_model.Product(
         name=name,
-        brand=brand,
+        brand_id=brand_id,
         description=description,
         price=price,
         base_price=base_price,

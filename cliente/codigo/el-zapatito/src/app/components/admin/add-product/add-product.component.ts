@@ -1,11 +1,15 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { CategoryService, Category } from '../../../services/category.service';
+import { BrandService, Brand } from '../../../services/brand.service';
+import { ProductService } from '../../../services/product.service';
 
 @Component({
   selector: 'app-add-product',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   template: `
     <div class="add-product-container">
       <!-- Breadcrumbs -->
@@ -50,23 +54,29 @@ import { RouterLink } from '@angular/router';
             <div class="grid-form">
               <div class="field col-span-2">
                 <label>Nombre del Producto</label>
-                <input type="text" placeholder="Ej. Zapatillas Runner Pro">
+                <input type="text" [(ngModel)]="productForm.name" name="name" placeholder="Ej. Zapatillas Runner Pro">
               </div>
               <div class="field">
                 <label>Marca</label>
-                <input type="text" placeholder="Ej. Nike">
+                <select [(ngModel)]="productForm.brand" name="brand">
+                  <option value="">Selecciona una marca</option>
+                  @for (b of brands(); track b.id) {
+                    <option [value]="b.id">{{ b.name }}</option>
+                  }
+                </select>
               </div>
               <div class="field">
                 <label>Categoría</label>
-                <select>
-                  <option>Deportivos</option>
-                  <option>Casuales</option>
-                  <option>Elegantes</option>
+                <select [(ngModel)]="productForm.category_id" name="category_id">
+                  <option value="">Selecciona una categoría</option>
+                  @for (c of categories(); track c.id) {
+                    <option [value]="c.id">{{ c.name }}</option>
+                  }
                 </select>
               </div>
               <div class="field col-span-2">
                 <label>Descripción detallada</label>
-                <textarea rows="4" placeholder="Describe los materiales, estilo, etc..."></textarea>
+                <textarea rows="4" [(ngModel)]="productForm.description" name="description" placeholder="Describe los materiales, estilo, etc..."></textarea>
               </div>
             </div>
             <div class="actions right">
@@ -82,11 +92,11 @@ import { RouterLink } from '@angular/router';
             <div class="grid-form">
               <div class="field">
                 <label>Precio de Venta (MXN)</label>
-                <input type="number" placeholder="0.00">
+                <input type="number" [(ngModel)]="productForm.price" name="price" placeholder="0.00">
               </div>
               <div class="field">
                 <label>Precio de Comparación (Tachado)</label>
-                <input type="number" placeholder="0.00">
+                <input type="number" [(ngModel)]="productForm.base_price" name="base_price" placeholder="0.00">
               </div>
             </div>
             <div class="actions between">
@@ -100,47 +110,28 @@ import { RouterLink } from '@angular/router';
         @if (currentStep() === 3) {
           <div class="step-content">
             <h3>Imágenes del Producto</h3>
-            <p class="helper-text">Sube hasta 5 imágenes. Arrástralas para cambiar el orden. La primera será la imagen principal (portada).</p>
+            <p class="helper-text">Sube la imagen de portada de tu calzado. Haz clic en la caja de abajo para seleccionar el archivo.</p>
             
             <div class="images-grid">
-              <!-- Cajas mockeadas para el drag and drop visual -->
-              <div class="image-box main-image">
+              <div class="image-box main-image" (click)="fileInput.click()">
                 <span class="badge-main">Principal</span>
-                <span class="material-icons drag-handle">drag_indicator</span>
-                <div class="placeholder-content">
-                  <span class="material-icons">add_photo_alternate</span>
-                  <span>Subir</span>
-                </div>
+                @if (imagePreview()) {
+                  <img [src]="imagePreview()" alt="Preview" style="width: 100%; height: 100%; object-fit: cover; border-radius: 10px;">
+                } @else {
+                  <div class="placeholder-content">
+                    <span class="material-icons">add_photo_alternate</span>
+                    <span>Subir Imagen</span>
+                  </div>
+                }
               </div>
-              <div class="image-box">
-                <span class="material-icons drag-handle">drag_indicator</span>
-                <div class="placeholder-content">
-                  <span class="material-icons">add_photo_alternate</span>
-                </div>
-              </div>
-              <div class="image-box">
-                <span class="material-icons drag-handle">drag_indicator</span>
-                <div class="placeholder-content">
-                  <span class="material-icons">add_photo_alternate</span>
-                </div>
-              </div>
-              <div class="image-box">
-                <span class="material-icons drag-handle">drag_indicator</span>
-                <div class="placeholder-content">
-                  <span class="material-icons">add_photo_alternate</span>
-                </div>
-              </div>
-              <div class="image-box">
-                <span class="material-icons drag-handle">drag_indicator</span>
-                <div class="placeholder-content">
-                  <span class="material-icons">add_photo_alternate</span>
-                </div>
-              </div>
+              <input #fileInput type="file" style="display: none" (change)="onFileSelected($event)" accept="image/*">
             </div>
 
             <div class="actions between">
               <button class="btn-secondary" (click)="prevStep()"><span class="material-icons">arrow_back</span> Atrás</button>
-              <button class="btn-success">Guardar y Publicar <span class="material-icons">check_circle</span></button>
+              <button class="btn-success" (click)="saveProduct()" [disabled]="loading()">
+                {{ loading() ? 'Guardando...' : 'Guardar y Publicar' }} <span class="material-icons">check_circle</span>
+              </button>
             </div>
           </div>
         }
@@ -186,16 +177,14 @@ import { RouterLink } from '@angular/router';
     input, select, textarea { width: 100%; padding: 0.9rem; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 0.95rem; background: #fafafa; transition: border 0.2s; }
     input:focus, select:focus, textarea:focus { border-color: #000; outline: none; background: #fff; }
 
-    /* Images Grid (Drag & Drop Mockup) */
-    .images-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 2rem; }
-    .image-box { aspect-ratio: 1; border: 2px dashed #ddd; border-radius: 12px; background: #fafafa; position: relative; display: flex; align-items: center; justify-content: center; cursor: grab; transition: all 0.2s; }
+    /* Images Grid */
+    .images-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 2rem; }
+    .image-box { aspect-ratio: 1.5; border: 2px dashed #ddd; border-radius: 12px; background: #fafafa; position: relative; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
     .image-box:hover { border-color: #999; background: #f0f0f0; }
-    .image-box:active { cursor: grabbing; transform: scale(0.98); }
-    .drag-handle { position: absolute; top: 8px; right: 8px; color: #aaa; font-size: 1.2rem; }
     .placeholder-content { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; color: #888; }
     
-    .main-image { grid-column: span 2; grid-row: span 2; aspect-ratio: auto; border-color: #000; border-style: solid; }
-    .badge-main { position: absolute; top: 12px; left: 12px; background: #000; color: #fff; font-size: 0.7rem; font-weight: bold; padding: 0.3rem 0.6rem; border-radius: 20px; text-transform: uppercase; }
+    .main-image { grid-column: span 2; aspect-ratio: auto; border-color: #000; border-style: solid; height: 250px; }
+    .badge-main { position: absolute; top: 12px; left: 12px; background: #000; color: #fff; font-size: 0.7rem; font-weight: bold; padding: 0.3rem 0.6rem; border-radius: 20px; text-transform: uppercase; z-index: 5; }
 
     /* Actions */
     .actions { display: flex; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #eee; align-items: center; }
@@ -205,15 +194,68 @@ import { RouterLink } from '@angular/router';
     button { display: flex; align-items: center; gap: 0.5rem; padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; border: none; }
     .btn-primary { background: #000; color: #fff; }
     .btn-primary:hover { background: #222; }
+    .btn-primary:disabled { background: #888; cursor: not-allowed; }
     .btn-secondary { background: #f5f5f5; color: #333; }
     .btn-secondary:hover { background: #e5e5e5; }
     .btn-success { background: #006600; color: #fff; }
     .btn-success:hover { background: #005500; }
+    .btn-success:disabled { background: #888; cursor: not-allowed; }
   `]
 })
-export class AddProductComponent {
-  // Estado usando Signals
+export class AddProductComponent implements OnInit {
+  categoryService = inject(CategoryService);
+  brandService = inject(BrandService);
+  productService = inject(ProductService);
+  router = inject(Router);
+
+  categories = signal<Category[]>([]);
+  brands = signal<Brand[]>([]);
+  
   currentStep = signal(1);
+  loading = signal(false);
+
+  // Form State
+  productForm = {
+    name: '',
+    brand: '', // Holds brand ID
+    category_id: '',
+    description: '',
+    price: 0,
+    base_price: 0
+  };
+
+  selectedFile: File | null = null;
+  imagePreview = signal<string | null>(null);
+
+  ngOnInit() {
+    this.loadDropdownData();
+  }
+
+  loadDropdownData() {
+    // Load active categories
+    this.categoryService.getCategories().subscribe({
+      next: (data) => this.categories.set(data.filter(c => c.is_active !== false)),
+      error: (err) => console.error('Error al cargar categorías para el formulario', err)
+    });
+
+    // Load active brands
+    this.brandService.getBrands().subscribe({
+      next: (data) => this.brands.set(data.filter(b => b.is_active !== false)),
+      error: (err) => console.error('Error al cargar marcas para el formulario', err)
+    });
+  }
+
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.imagePreview.set(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
 
   nextStep() {
     if (this.currentStep() < 3) {
@@ -230,5 +272,40 @@ export class AddProductComponent {
   setStep(step: number) {
     this.currentStep.set(step);
   }
+
+  saveProduct() {
+    if (!this.productForm.name.trim() || !this.productForm.price || !this.selectedFile) {
+      alert('Por favor completa los campos obligatorios: Nombre, Precio e Imagen.');
+      return;
+    }
+
+    this.loading.set(true);
+
+    const formData = new FormData();
+    formData.append('name', this.productForm.name);
+    formData.append('brand', this.productForm.brand);
+    formData.append('category_id', this.productForm.category_id);
+    formData.append('description', this.productForm.description);
+    formData.append('price', this.productForm.price.toString());
+    
+    if (this.productForm.base_price) {
+      formData.append('base_price', this.productForm.base_price.toString());
+    }
+    
+    formData.append('file', this.selectedFile);
+
+    this.productService.createProduct(formData).subscribe({
+      next: () => {
+        this.loading.set(false);
+        this.router.navigate(['/admin/products']);
+      },
+      error: (err) => {
+        console.error('Error al guardar el producto', err);
+        alert('Error al guardar el producto. Verifica tu conexión.');
+        this.loading.set(false);
+      }
+    });
+  }
 }
+
 

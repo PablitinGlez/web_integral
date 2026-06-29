@@ -11,11 +11,20 @@ CREATE TABLE categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+-- 1.5. Marcas
+CREATE TABLE brands (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 2. Productos (Zapatos)
 CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    brand VARCHAR(100),
+    brand_id UUID REFERENCES brands(id) ON DELETE SET NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     base_price DECIMAL(10, 2), -- Precio original antes de descuentos
