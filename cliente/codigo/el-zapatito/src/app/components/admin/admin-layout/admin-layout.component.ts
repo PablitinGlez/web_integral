@@ -28,6 +28,9 @@ import { CommonModule } from '@angular/common';
             <a routerLink="/admin/categories" routerLinkActive="active">
               <span class="material-icons">category</span> Categorías
             </a>
+            <a routerLink="/admin/brands" routerLinkActive="active">
+              <span class="material-icons">sell</span> Marcas
+            </a>
             <a routerLink="/admin/products" routerLinkActive="active">
               <span class="material-icons">style</span> Productos
             </a>

@@ -1,0 +1,3 @@
+[python]
+# Apuntar al intérprete del entorno virtual donde FastAPI está instalado
+python_interpreter = ".venv/bin/python"
