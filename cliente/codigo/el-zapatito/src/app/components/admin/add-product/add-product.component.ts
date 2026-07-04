@@ -44,6 +44,11 @@ import { ProductService } from '../../../services/product.service';
           <div class="step-circle">3</div>
           <span class="step-label">Imágenes</span>
         </div>
+        <div class="step-line" [class.active]="currentStep() >= 4"></div>
+        <div class="step" [class.active]="currentStep() >= 4" [class.completed]="currentStep() > 4" (click)="setStep(4)">
+          <div class="step-circle">4</div>
+          <span class="step-label">Tallas</span>
+        </div>
       </div>
 
       <div class="form-card">
@@ -196,7 +201,55 @@ import { ProductService } from '../../../services/product.service';
 
             <div class="actions between">
               <button class="btn-secondary" (click)="prevStep()"><span class="material-icons">arrow_back</span> Atrás</button>
-              <button class="btn-success" (click)="saveProduct()" [disabled]="loading() || imageList().length === 0">
+              <button class="btn-primary" (click)="nextStep()" [disabled]="imageList().length === 0">Siguiente Paso <span class="material-icons">arrow_forward</span></button>
+            </div>
+          </div>
+        }
+
+        <!-- Paso 4 -->
+        @if (currentStep() === 4) {
+          <div class="step-content">
+            <h3>Tallas Disponibles</h3>
+            <p class="helper-text">Agrega cada talla que estará disponible para este calzado junto con su cantidad en stock. Debes registrar al menos una talla para poder publicar el producto.</p>
+
+            <div class="sizes-manager-wrapper">
+              <div class="size-input-row">
+                <div class="field">
+                  <label>Talla (Ej: 38, 41.5)</label>
+                  <input type="number" step="0.5" min="0" [(ngModel)]="sizeForm.size" name="sizeInput" placeholder="Talla">
+                </div>
+                <div class="field">
+                  <label>Cantidad en Stock</label>
+                  <input type="number" min="0" [(ngModel)]="sizeForm.stock_quantity" name="stockInput" placeholder="Cantidad">
+                </div>
+                <button type="button" class="btn-add-size" (click)="addSize()">
+                  <span class="material-icons">add</span> Añadir Talla
+                </button>
+              </div>
+
+              @if (sizeList().length > 0) {
+                <div class="sizes-grid">
+                  @for (s of sizeList(); track s.size; let idx = $index) {
+                    <div class="size-chip">
+                      <span class="size-chip-num">Talla {{ s.size }}</span>
+                      <span class="size-chip-qty">{{ s.stock_quantity }} u.</span>
+                      <button type="button" class="btn-mini-icon danger" (click)="removeSize(idx)" title="Eliminar talla">
+                        <span class="material-icons">close</span>
+                      </button>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="empty-images-state">
+                  <span class="material-icons">straighten</span>
+                  <p>Aún no has agregado ninguna talla para este producto.</p>
+                </div>
+              }
+            </div>
+
+            <div class="actions between">
+              <button class="btn-secondary" (click)="prevStep()"><span class="material-icons">arrow_back</span> Atrás</button>
+              <button class="btn-success" (click)="saveProduct()" [disabled]="loading() || imageList().length === 0 || sizeList().length === 0">
                 {{ loading() ? 'Guardando...' : 'Guardar y Publicar' }} <span class="material-icons">check_circle</span>
               </button>
             </div>
@@ -448,6 +501,27 @@ import { ProductService } from '../../../services/product.service';
       margin-bottom: 0.5rem;
     }
 
+    /* Sizes Manager (Paso 4) */
+    .sizes-manager-wrapper { display: flex; flex-direction: column; gap: 1.5rem; }
+    .size-input-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 1rem; align-items: end; }
+    .btn-add-size {
+      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+      background: #000; color: #fff; border: none; border-radius: 8px;
+      padding: 0.9rem 1.2rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+      transition: background 0.2s;
+    }
+    .btn-add-size:hover { background: #222; }
+    .sizes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem; }
+    .size-chip {
+      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+      background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 1rem;
+      position: relative;
+    }
+    .size-chip-num { font-weight: 700; font-size: 1rem; }
+    .size-chip-qty { font-size: 0.8rem; color: #666; }
+    .size-chip .btn-mini-icon { position: absolute; top: 0.4rem; right: 0.4rem; width: 24px; height: 24px; }
+    .size-chip .btn-mini-icon .material-icons { font-size: 1rem; }
+
     /* Actions */
     .actions { display: flex; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #eee; align-items: center; }
     .actions.right { justify-content: flex-end; }
@@ -494,6 +568,13 @@ export class AddProductComponent implements OnInit {
 
   // Múltiples imágenes locales para ordenación
   imageList = signal<{ id: string; file: File; previewUrl: string }[]>([]);
+
+  // Tallas disponibles del producto (se registran junto con el producto al publicar)
+  sizeForm = {
+    size: null as number | null,
+    stock_quantity: null as number | null
+  };
+  sizeList = signal<{ size: number; stock_quantity: number }[]>([]);
 
   ngOnInit() {
     this.loadDropdownData();
@@ -602,8 +683,43 @@ export class AddProductComponent implements OnInit {
     });
   }
 
+  // Acciones de tallas
+  addSize() {
+    const size = this.sizeForm.size;
+    const stock = this.sizeForm.stock_quantity;
+
+    if (size === null || size === undefined || isNaN(size) || size <= 0) {
+      alert('Ingresa una talla válida.');
+      return;
+    }
+    if (stock === null || stock === undefined || isNaN(stock) || stock < 0) {
+      alert('Ingresa una cantidad de stock válida (0 o mayor).');
+      return;
+    }
+
+    this.sizeList.update(list => {
+      const existingIdx = list.findIndex(s => s.size === size);
+      if (existingIdx !== -1) {
+        const copy = [...list];
+        copy[existingIdx] = { size, stock_quantity: stock };
+        return copy;
+      }
+      return [...list, { size, stock_quantity: stock }].sort((a, b) => a.size - b.size);
+    });
+
+    this.sizeForm = { size: null, stock_quantity: null };
+  }
+
+  removeSize(index: number) {
+    this.sizeList.update(list => {
+      const copy = [...list];
+      copy.splice(index, 1);
+      return copy;
+    });
+  }
+
   nextStep() {
-    if (this.currentStep() < 3) {
+    if (this.currentStep() < 4) {
       this.currentStep.update(s => s + 1);
     }
   }
@@ -624,6 +740,11 @@ export class AddProductComponent implements OnInit {
       return;
     }
 
+    if (this.sizeList().length === 0) {
+      alert('Agrega al menos una talla disponible antes de publicar el producto.');
+      return;
+    }
+
     this.loading.set(true);
 
     const formData = new FormData();
@@ -636,7 +757,10 @@ export class AddProductComponent implements OnInit {
     if (this.productForm.base_price) {
       formData.append('base_price', this.productForm.base_price.toString());
     }
-    
+
+    // Tallas disponibles con su stock inicial
+    formData.append('sizes', JSON.stringify(this.sizeList()));
+
     // Adjuntar todas las imágenes en el orden correcto
     this.imageList().forEach(img => {
       formData.append('files', img.file);
@@ -655,8 +779,3 @@ export class AddProductComponent implements OnInit {
     });
   }
 }
-
-
-
-
-
