@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ProductService } from '../../../services/product.service';
 
 @Component({
@@ -72,10 +73,10 @@ import { ProductService } from '../../../services/product.service';
           </div>
 
           <div class="product-grid">
-            <div *ngFor="let item of products()" class="product-card">
+            <div *ngFor="let item of products()" class="product-card" (click)="goToProduct(item)">
               <div class="img-container">
                 <img [src]="item.main_image_url" [alt]="item.name">
-                <button class="quick-add">+</button>
+                <button class="quick-add" (click)="$event.stopPropagation(); goToProduct(item)">+</button>
               </div>
               <div class="info">
                 <p class="brand">{{ item.brand || 'El Zapatito' }}</p>
@@ -154,7 +155,8 @@ import { ProductService } from '../../../services/product.service';
 })
 export class CatalogComponent implements OnInit {
   productService = inject(ProductService);
-  
+  router = inject(Router);
+
   products = signal<any[]>([]);
 
   sizes = ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '12'];
@@ -162,36 +164,42 @@ export class CatalogComponent implements OnInit {
 
   mockProducts = [
     {
+      id: 'mock-1',
       name: 'Nike Air Max Minimal',
       brand: 'Nike',
       price: 189.99,
       main_image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600'
     },
     {
+      id: 'mock-2',
       name: 'Jordan Retro High',
       brand: 'Jordan',
       price: 210.00,
       main_image_url: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=600'
     },
     {
+      id: 'mock-3',
       name: 'Adidas Ultra Boost',
       brand: 'Adidas',
       price: 160.00,
       main_image_url: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=600'
     },
     {
+      id: 'mock-4',
       name: 'Yeezy Boost 350',
       brand: 'Yeezy',
       price: 220.00,
       main_image_url: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=600'
     },
     {
+      id: 'mock-5',
       name: 'NB Vintage 574',
       brand: 'New Balance',
       price: 130.00,
       main_image_url: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&q=80&w=600'
     },
     {
+      id: 'mock-6',
       name: 'Chuck Taylor 70',
       brand: 'Converse',
       price: 95.00,
@@ -213,5 +221,11 @@ export class CatalogComponent implements OnInit {
         console.warn('API con problemas, usando datos de prueba ampliados.');
       }
     });
+  }
+
+  goToProduct(item: any) {
+    if (item?.id) {
+      this.router.navigate(['/product', item.id]);
+    }
   }
 }
