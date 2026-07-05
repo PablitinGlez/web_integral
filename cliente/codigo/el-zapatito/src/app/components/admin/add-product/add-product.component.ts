@@ -47,7 +47,12 @@ import { ProductService } from '../../../services/product.service';
         <div class="step-line" [class.active]="currentStep() >= 4"></div>
         <div class="step" [class.active]="currentStep() >= 4" [class.completed]="currentStep() > 4" (click)="setStep(4)">
           <div class="step-circle">4</div>
-          <span class="step-label">Tallas</span>
+          <span class="step-label">Tallas y Colores</span>
+        </div>
+        <div class="step-line" [class.active]="currentStep() >= 5"></div>
+        <div class="step" [class.active]="currentStep() >= 5" [class.completed]="currentStep() > 5" (click)="setStep(5)">
+          <div class="step-circle">5</div>
+          <span class="step-label">Publicación</span>
         </div>
       </div>
 
@@ -115,6 +120,15 @@ import { ProductService } from '../../../services/product.service';
                     </div>
                   }
                 </div>
+              </div>
+              <div class="field">
+                <label>Género</label>
+                <select [(ngModel)]="productForm.gender" name="gender" class="native-select">
+                  <option value="">Selecciona un género</option>
+                  @for (g of genderOptions; track g) {
+                    <option [value]="g">{{ g }}</option>
+                  }
+                </select>
               </div>
               <div class="field col-span-2">
                 <label>Descripción detallada</label>
@@ -247,10 +261,94 @@ import { ProductService } from '../../../services/product.service';
               }
             </div>
 
+            <h3 class="section-title-spaced">Colores Disponibles</h3>
+            <p class="helper-text">Selecciona los colores en los que está disponible este calzado. Es opcional.</p>
+
+            <div class="colors-manager-wrapper">
+              <div class="colors-grid">
+                @for (c of colorOptions; track c.name) {
+                  <button
+                    type="button"
+                    class="color-chip"
+                    [class.active]="isColorSelected(c.name)"
+                    (click)="toggleColor(c.name)">
+                    <span class="color-swatch" [style.background]="c.hex"></span>
+                    {{ c.name }}
+                  </button>
+                }
+              </div>
+
+              <div class="custom-color-row">
+                <input type="text" [(ngModel)]="customColorInput" name="customColor" placeholder="Otro color (ej. Vino tinto)" (keydown.enter)="addCustomColor()">
+                <button type="button" class="btn-secondary" (click)="addCustomColor()">Añadir</button>
+              </div>
+
+              @if (selectedColors().length > 0) {
+                <div class="selected-colors-summary">
+                  <span class="summary-label">Seleccionados:</span>
+                  @for (color of selectedColors(); track color) {
+                    <span class="color-tag">
+                      {{ color }}
+                      <button type="button" (click)="toggleColor(color)" title="Quitar color">
+                        <span class="material-icons">close</span>
+                      </button>
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+
             <div class="actions between">
               <button class="btn-secondary" (click)="prevStep()"><span class="material-icons">arrow_back</span> Atrás</button>
-              <button class="btn-success" (click)="saveProduct()" [disabled]="loading() || imageList().length === 0 || sizeList().length === 0">
-                {{ loading() ? 'Guardando...' : 'Guardar y Publicar' }} <span class="material-icons">check_circle</span>
+              <button class="btn-primary" (click)="nextStep()" [disabled]="sizeList().length === 0">Siguiente Paso <span class="material-icons">arrow_forward</span></button>
+            </div>
+          </div>
+        }
+
+        <!-- Paso 5 -->
+        @if (currentStep() === 5) {
+          <div class="step-content">
+            <h3>Publicación</h3>
+            <p class="helper-text">Define el código interno del producto y decide si quieres publicarlo ahora o guardarlo como borrador para terminarlo más tarde.</p>
+
+            <div class="grid-form">
+              <div class="field col-span-2">
+                <label>SKU / Código interno</label>
+                <input type="text" [(ngModel)]="productForm.sku" name="sku" placeholder="Ej. ZAP-NIKE-38-NEG">
+                <span class="field-hint">Se usa para identificar el producto en inventario y pedidos. Debe ser único.</span>
+              </div>
+            </div>
+
+            <h3 class="section-title-spaced">Estado del Producto</h3>
+            <div class="status-options">
+              <button
+                type="button"
+                class="status-card"
+                [class.active]="productForm.is_active === true"
+                (click)="productForm.is_active = true">
+                <span class="material-icons">check_circle</span>
+                <div>
+                  <strong>Activo</strong>
+                  <p>El producto se publica de inmediato y es visible en el catálogo.</p>
+                </div>
+              </button>
+              <button
+                type="button"
+                class="status-card"
+                [class.active]="productForm.is_active === false"
+                (click)="productForm.is_active = false">
+                <span class="material-icons">edit_note</span>
+                <div>
+                  <strong>Borrador</strong>
+                  <p>Se guarda el producto sin publicarlo todavía en la tienda.</p>
+                </div>
+              </button>
+            </div>
+
+            <div class="actions between">
+              <button class="btn-secondary" (click)="prevStep()"><span class="material-icons">arrow_back</span> Atrás</button>
+              <button class="btn-success" (click)="saveProduct()" [disabled]="loading() || imageList().length === 0 || sizeList().length === 0 || !productForm.sku.trim()">
+                {{ loading() ? 'Guardando...' : (productForm.is_active ? 'Guardar y Publicar' : 'Guardar como Borrador') }} <span class="material-icons">check_circle</span>
               </button>
             </div>
           </div>
@@ -522,6 +620,62 @@ import { ProductService } from '../../../services/product.service';
     .size-chip .btn-mini-icon { position: absolute; top: 0.4rem; right: 0.4rem; width: 24px; height: 24px; }
     .size-chip .btn-mini-icon .material-icons { font-size: 1rem; }
 
+    /* Select nativo (Género) */
+    .native-select {
+      width: 100%; padding: 0.9rem; border: 1px solid #ddd; border-radius: 8px;
+      box-sizing: border-box; font-size: 0.95rem; background: #fafafa; cursor: pointer;
+      transition: border 0.2s; appearance: auto;
+    }
+    .native-select:focus { border-color: #000; outline: none; background: #fff; }
+
+    .field-hint { display: block; margin-top: 0.4rem; font-size: 0.8rem; color: #999; }
+    .section-title-spaced { margin-top: 3rem; }
+
+    /* Colors Manager (Paso 4) */
+    .colors-manager-wrapper { display: flex; flex-direction: column; gap: 1.2rem; }
+    .colors-grid { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+    .color-chip {
+      display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem;
+      border: 1px solid #ddd; border-radius: 20px; background: #fff; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500; transition: all 0.2s;
+    }
+    .color-chip:hover { border-color: #000; }
+    .color-chip.active { background: #000; color: #fff; border-color: #000; }
+    .color-swatch {
+      width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15);
+      display: inline-block; flex-shrink: 0;
+    }
+    .custom-color-row { display: flex; gap: 0.7rem; }
+    .custom-color-row input { flex: 1; }
+    .selected-colors-summary {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+      padding-top: 0.5rem; border-top: 1px dashed #eee;
+    }
+    .summary-label { font-size: 0.85rem; color: #888; font-weight: 600; margin-right: 0.3rem; }
+    .color-tag {
+      display: flex; align-items: center; gap: 0.3rem; background: #f1f3f5; color: #333;
+      font-size: 0.85rem; padding: 0.3rem 0.5rem 0.3rem 0.8rem; border-radius: 16px;
+    }
+    .color-tag button { padding: 0; background: none; border: none; display: flex; cursor: pointer; color: #888; }
+    .color-tag button .material-icons { font-size: 1rem; }
+
+    /* Estado del producto (Paso 5) */
+    .status-options { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+    @media (max-width: 640px) {
+      .status-options { grid-template-columns: 1fr; }
+    }
+    .status-card {
+      display: flex; align-items: flex-start; gap: 1rem; text-align: left;
+      padding: 1.5rem; border: 2px solid #eee; border-radius: 16px; background: #fff;
+      cursor: pointer; transition: all 0.2s;
+    }
+    .status-card:hover { border-color: #ccc; }
+    .status-card.active { border-color: #000; background: #fafafa; }
+    .status-card .material-icons { font-size: 1.8rem; color: #888; }
+    .status-card.active .material-icons { color: #000; }
+    .status-card strong { display: block; margin-bottom: 0.3rem; font-size: 1rem; }
+    .status-card p { margin: 0; font-size: 0.85rem; color: #888; }
+
     /* Actions */
     .actions { display: flex; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #eee; align-items: center; }
     .actions.right { justify-content: flex-end; }
@@ -563,8 +717,13 @@ export class AddProductComponent implements OnInit {
     category_id: '',
     description: '',
     price: 0,
-    base_price: 0
+    base_price: 0,
+    gender: '',
+    sku: '',
+    is_active: true
   };
+
+  genderOptions = ['Hombre', 'Mujer', 'Niño', 'Unisex'];
 
   // Múltiples imágenes locales para ordenación
   imageList = signal<{ id: string; file: File; previewUrl: string }[]>([]);
@@ -575,6 +734,24 @@ export class AddProductComponent implements OnInit {
     stock_quantity: null as number | null
   };
   sizeList = signal<{ size: number; stock_quantity: number }[]>([]);
+
+  // Colores disponibles del producto
+  colorOptions = [
+    { name: 'Negro', hex: '#000000' },
+    { name: 'Blanco', hex: '#ffffff' },
+    { name: 'Gris', hex: '#9e9e9e' },
+    { name: 'Rojo', hex: '#e03131' },
+    { name: 'Azul', hex: '#1971c2' },
+    { name: 'Verde', hex: '#2f9e44' },
+    { name: 'Amarillo', hex: '#f2c200' },
+    { name: 'Café', hex: '#8b5a2b' },
+    { name: 'Rosa', hex: '#f06595' },
+    { name: 'Morado', hex: '#9c36b5' },
+    { name: 'Naranja', hex: '#f76707' },
+    { name: 'Beige', hex: '#e8dcc8' }
+  ];
+  selectedColors = signal<string[]>([]);
+  customColorInput: string = '';
 
   ngOnInit() {
     this.loadDropdownData();
@@ -718,8 +895,29 @@ export class AddProductComponent implements OnInit {
     });
   }
 
+  // Acciones de colores
+  isColorSelected(name: string): boolean {
+    return this.selectedColors().includes(name);
+  }
+
+  toggleColor(name: string) {
+    this.selectedColors.update(list =>
+      list.includes(name) ? list.filter(c => c !== name) : [...list, name]
+    );
+  }
+
+  addCustomColor() {
+    const value = this.customColorInput.trim();
+    if (!value) return;
+
+    if (!this.isColorSelected(value)) {
+      this.selectedColors.update(list => [...list, value]);
+    }
+    this.customColorInput = '';
+  }
+
   nextStep() {
-    if (this.currentStep() < 4) {
+    if (this.currentStep() < 5) {
       this.currentStep.update(s => s + 1);
     }
   }
@@ -745,6 +943,11 @@ export class AddProductComponent implements OnInit {
       return;
     }
 
+    if (!this.productForm.sku.trim()) {
+      alert('Ingresa un SKU / código interno antes de guardar el producto.');
+      return;
+    }
+
     this.loading.set(true);
 
     const formData = new FormData();
@@ -756,6 +959,17 @@ export class AddProductComponent implements OnInit {
     
     if (this.productForm.base_price) {
       formData.append('base_price', this.productForm.base_price.toString());
+    }
+
+    if (this.productForm.gender) {
+      formData.append('gender', this.productForm.gender);
+    }
+
+    formData.append('sku', this.productForm.sku.trim());
+    formData.append('is_active', String(this.productForm.is_active));
+
+    if (this.selectedColors().length > 0) {
+      formData.append('colors', this.selectedColors().join(','));
     }
 
     // Tallas disponibles con su stock inicial
@@ -773,7 +987,8 @@ export class AddProductComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error al guardar el producto', err);
-        alert('Error al guardar el producto. Verifica tu conexión.');
+        const message = err?.error?.detail || 'Error al guardar el producto. Verifica tu conexión.';
+        alert(message);
         this.loading.set(false);
       }
     });

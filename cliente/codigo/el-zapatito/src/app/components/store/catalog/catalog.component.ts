@@ -214,7 +214,9 @@ export class CatalogComponent implements OnInit {
     this.productService.getProducts().subscribe({
       next: (data) => {
         if (data && data.length > 0) {
-          this.products.set(data);
+          // El catálogo público solo muestra productos Activos; los Borradores solo se ven en el panel admin
+          const activeOnly = data.filter((p: any) => p.is_active !== false);
+          this.products.set(activeOnly);
         }
       },
       error: () => {

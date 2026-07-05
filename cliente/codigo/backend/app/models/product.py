@@ -16,7 +16,10 @@ class Product(Base):
     base_price = Column(Numeric(10, 2))
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"))
     main_image_url = Column(Text)
-    is_active = Column(Boolean, default=True)
+    gender = Column(String(20))  # Hombre / Mujer / Niño / Unisex
+    colors = Column(Text)  # Colores disponibles, separados por coma (ej: "Negro,Blanco,Rojo")
+    sku = Column(String(100), unique=True, index=True)  # Código interno para inventario y pedidos
+    is_active = Column(Boolean, default=True)  # Estado del producto: True = Activo, False = Borrador
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -27,4 +30,3 @@ class Product(Base):
 
     # Proxy para obtener el nombre de la marca
     brand = association_proxy('brand_rel', 'name')
-

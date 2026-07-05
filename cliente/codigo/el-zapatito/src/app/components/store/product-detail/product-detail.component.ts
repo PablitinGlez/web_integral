@@ -71,9 +71,14 @@ interface InventoryItem {
             <p class="brand-tag">{{ product().brand || 'El Zapatito' }}</p>
             <h1>{{ product().name }}</h1>
 
-            @if (product().category?.name) {
-              <span class="category-chip">{{ product().category.name }}</span>
-            }
+            <div class="chips-row">
+              @if (product().category?.name) {
+                <span class="category-chip">{{ product().category.name }}</span>
+              }
+              @if (product().gender) {
+                <span class="category-chip gender-chip">{{ product().gender }}</span>
+              }
+            </div>
 
             <div class="price-row">
               @if (hasDiscount()) {
@@ -83,6 +88,21 @@ interface InventoryItem {
             </div>
 
             <p class="description">{{ product().description || 'Este producto no tiene una descripción detallada todavía.' }}</p>
+
+            <!-- Colores disponibles -->
+            @if (colorList().length > 0) {
+              <div class="section">
+                <h3>Colores Disponibles</h3>
+                <div class="color-options">
+                  @for (c of colorList(); track c) {
+                    <span class="color-pill">
+                      <span class="color-dot" [style.background]="colorHex(c)"></span>
+                      {{ c }}
+                    </span>
+                  }
+                </div>
+              </div>
+            }
 
             <!-- Selector de tallas -->
             <div class="section">
@@ -151,6 +171,12 @@ interface InventoryItem {
                   <span>Categoría: {{ product().category.name }}</span>
                 </div>
               }
+              @if (product().sku) {
+                <div class="extra-item">
+                  <span class="material-icons">qr_code_2</span>
+                  <span>SKU: {{ product().sku }}</span>
+                </div>
+              }
               <div class="extra-item">
                 <span class="material-icons">inventory_2</span>
                 <span>Disponibilidad: {{ availabilityText() }}</span>
@@ -210,16 +236,28 @@ interface InventoryItem {
     .info-panel { display: flex; flex-direction: column; }
     .brand-tag { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 700; margin: 0 0 0.5rem; }
     h1 { font-size: 2.2rem; letter-spacing: -1px; margin: 0 0 1rem; }
+    .chips-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
     .category-chip {
       display: inline-block; background: #f1f3f5; color: #333; font-size: 0.8rem;
-      padding: 0.3rem 0.8rem; border-radius: 20px; margin-bottom: 1.5rem; width: fit-content;
+      padding: 0.3rem 0.8rem; border-radius: 20px; width: fit-content; margin-bottom: 0;
     }
+    .gender-chip { background: #eef2ff; color: #3730a3; }
 
     .price-row { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 1.5rem; }
     .price-old { text-decoration: line-through; color: #999; font-size: 1.1rem; }
     .price-current { font-size: 2rem; font-weight: 700; }
 
     .description { color: #555; line-height: 1.6; margin-bottom: 2rem; }
+
+    .color-options { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .color-pill {
+      display: flex; align-items: center; gap: 0.5rem; background: #fafafa;
+      border: 1px solid #eee; padding: 0.4rem 0.8rem; border-radius: 20px; font-size: 0.85rem;
+    }
+    .color-dot {
+      width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.15);
+      display: inline-block; flex-shrink: 0;
+    }
 
     .section { margin-bottom: 2rem; }
     .section h3 { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; color: #666; margin: 0 0 1rem; }
@@ -342,6 +380,34 @@ export class ProductDetailComponent implements OnInit {
     return [...p.inventory].sort((a: InventoryItem, b: InventoryItem) => a.size - b.size);
   });
 
+  private colorHexMap: { [key: string]: string } = {
+    'Negro': '#000000',
+    'Blanco': '#ffffff',
+    'Gris': '#9e9e9e',
+    'Rojo': '#e03131',
+    'Azul': '#1971c2',
+    'Verde': '#2f9e44',
+    'Amarillo': '#f2c200',
+    'Café': '#8b5a2b',
+    'Rosa': '#f06595',
+    'Morado': '#9c36b5',
+    'Naranja': '#f76707',
+    'Beige': '#e8dcc8'
+  };
+
+  colorList = computed<string[]>(() => {
+    const p = this.product();
+    if (!p || !p.colors) return [];
+    return String(p.colors)
+      .split(',')
+      .map((c: string) => c.trim())
+      .filter((c: string) => c.length > 0);
+  });
+
+  colorHex(name: string): string {
+    return this.colorHexMap[name] || '#cccccc';
+  }
+
   totalStock = computed(() => this.sizes().reduce((acc, s) => acc + s.stock_quantity, 0));
 
   availabilityText = computed(() => {
@@ -376,7 +442,12 @@ export class ProductDetailComponent implements OnInit {
 
     this.productService.getProduct(id).subscribe({
       next: (data) => {
-        this.setProduct(data);
+        // Los productos en Borrador no deben ser visibles públicamente, ni por URL directa
+        if (data && data.is_active === false) {
+          this.product.set(null);
+        } else {
+          this.setProduct(data);
+        }
         this.loading.set(false);
       },
       error: () => {
