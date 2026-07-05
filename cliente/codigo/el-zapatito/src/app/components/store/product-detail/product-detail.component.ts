@@ -464,9 +464,15 @@ export class ProductDetailComponent implements OnInit {
   private setProduct(data: any) {
     this.product.set(data);
     this.activeImage.set(data?.main_image_url || '');
-    this.selectedSize.set(null);
     this.quantity.set(1);
+
+    // Auto-seleccionar la primera talla con stock disponible
+    const firstAvailable = (data?.inventory || [])
+      .sort((a: InventoryItem, b: InventoryItem) => a.size - b.size)
+      .find((s: InventoryItem) => s.stock_quantity > 0) || null;
+    this.selectedSize.set(firstAvailable);
   }
+
 
   selectSize(size: InventoryItem) {
     if (size.stock_quantity === 0) return;
