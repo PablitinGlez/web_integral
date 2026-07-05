@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ProductService } from '../../../services/product.service';
 
 @Component({
@@ -67,26 +68,44 @@ import { ProductService } from '../../../services/product.service';
 
         <!-- Product Grid -->
         <main class="main-content">
-          <div *ngIf="products().length === 0" class="no-products">
-            <p>No hay productos disponibles por ahora.</p>
-          </div>
-
-          <div class="product-grid">
-            <div *ngFor="let item of products()" class="product-card">
-              <div class="img-container">
-                <img [src]="item.main_image_url" [alt]="item.name">
-                <button class="quick-add">+</button>
-              </div>
-              <div class="info">
-                <p class="brand">{{ item.brand || 'El Zapatito' }}</p>
-                <h4 class="name">{{ item.name }}</h4>
-                <div class="bottom-info">
-                  <p class="price">{{ item.price | currency:'USD' }}</p>
-                  <span class="tag" *ngIf="item.price > 200">Luxury</span>
+          @if (loading()) {
+            <div class="loading-grid">
+              @for (i of skeletons; track i) {
+                <div class="skeleton-card">
+                  <div class="skeleton-img"></div>
+                  <div class="skeleton-line short"></div>
+                  <div class="skeleton-line long"></div>
+                  <div class="skeleton-line medium"></div>
                 </div>
-              </div>
+              }
             </div>
-          </div>
+          } @else if (products().length === 0) {
+            <div class="no-products">
+              <span class="material-icons">inventory_2</span>
+              <p>No hay productos disponibles por ahora.</p>
+            </div>
+          } @else {
+            <div class="product-grid">
+              @for (item of products(); track item.id) {
+                <div class="product-card" (click)="goToProduct(item)">
+                  <div class="img-container">
+                    <img [src]="item.main_image_url" [alt]="item.name">
+                    <button class="quick-add" (click)="$event.stopPropagation(); goToProduct(item)">+</button>
+                  </div>
+                  <div class="info">
+                    <p class="brand">{{ item.brand || 'El Zapatito' }}</p>
+                    <h4 class="name">{{ item.name }}</h4>
+                    <div class="bottom-info">
+                      <p class="price">{{ item.price | currency:'MXN':'symbol':'1.2-2' }}</p>
+                      @if (item.price > 1500) {
+                        <span class="tag">Premium</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </main>
       </div>
     </div>
@@ -143,75 +162,59 @@ import { ProductService } from '../../../services/product.service';
     .price { font-size: 1.2rem; font-weight: 700; margin: 0; }
     .tag { font-size: 0.6rem; color: #000; border: 1px solid #000; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
 
-    .no-products { text-align: center; padding: 5rem; border: 1px dashed #eee; border-radius: 20px; color: #888; }
+    .no-products { text-align: center; padding: 5rem; border: 1px dashed #eee; border-radius: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .no-products .material-icons { font-size: 3rem; color: #ccc; }
+
+    /* Skeleton loader */
+    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem 2rem; }
+    .skeleton-card { display: flex; flex-direction: column; gap: 0.8rem; }
+    .skeleton-img { height: 350px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 20px; }
+    .skeleton-line { height: 14px; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    .skeleton-line.short { width: 40%; }
+    .skeleton-line.long { width: 80%; }
+    .skeleton-line.medium { width: 55%; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     @media (max-width: 992px) {
       .catalog-layout { grid-template-columns: 1fr; }
-      .sidebar { display: none; } /* En producción haríamos un modal para filtros */
+      .sidebar { display: none; }
       h1 { font-size: 2.2rem; }
     }
   `]
 })
 export class CatalogComponent implements OnInit {
   productService = inject(ProductService);
-  
+  router = inject(Router);
+
   products = signal<any[]>([]);
+  loading = signal(true);
+
+  // Para el skeleton loader (6 tarjetas de carga animadas)
+  skeletons = [1, 2, 3, 4, 5, 6];
 
   sizes = ['7', '7.5', '8', '8.5', '9', '9.5', '10', '10.5', '11', '12'];
   brands = ['Nike', 'Jordan', 'Adidas', 'New Balance', 'Yeezy', 'Converse'];
 
-  mockProducts = [
-    {
-      name: 'Nike Air Max Minimal',
-      brand: 'Nike',
-      price: 189.99,
-      main_image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600'
-    },
-    {
-      name: 'Jordan Retro High',
-      brand: 'Jordan',
-      price: 210.00,
-      main_image_url: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=600'
-    },
-    {
-      name: 'Adidas Ultra Boost',
-      brand: 'Adidas',
-      price: 160.00,
-      main_image_url: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=600'
-    },
-    {
-      name: 'Yeezy Boost 350',
-      brand: 'Yeezy',
-      price: 220.00,
-      main_image_url: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=600'
-    },
-    {
-      name: 'NB Vintage 574',
-      brand: 'New Balance',
-      price: 130.00,
-      main_image_url: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&q=80&w=600'
-    },
-    {
-      name: 'Chuck Taylor 70',
-      brand: 'Converse',
-      price: 95.00,
-      main_image_url: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=600'
-    }
-  ];
-
   ngOnInit() {
-    // Inicializamos con mock para que se vea rico de inmediato
-    this.products.set(this.mockProducts);
-
+    this.loading.set(true);
     this.productService.getProducts().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
-          this.products.set(data);
-        }
+        // Solo productos activos son visibles en el catálogo público
+        const activeOnly = (data ?? []).filter((p: any) => p.is_active !== false);
+        this.products.set(activeOnly);
+        this.loading.set(false);
       },
-      error: () => {
-        console.warn('API con problemas, usando datos de prueba ampliados.');
+      error: (err) => {
+        console.error('Error al cargar catálogo:', err);
+        this.products.set([]);
+        this.loading.set(false);
       }
     });
+  }
+
+  goToProduct(item: any) {
+    if (item?.id) {
+      this.router.navigate(['/product', item.id]);
+    }
   }
 }
