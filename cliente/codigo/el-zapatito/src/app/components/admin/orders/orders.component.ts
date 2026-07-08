@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { OrderService } from '../../../services/order.service';
 
 @Component({
   selector: 'app-orders',
@@ -11,7 +12,7 @@ import { FormsModule } from '@angular/forms';
       <header class="page-header">
         <div>
           <h1>Pedidos</h1>
-          <p class="subtitle">Historial y seguimiento de órdenes de compra</p>
+          <p class="subtitle">Historial y seguimiento de órdenes de compra en tiempo real</p>
         </div>
         <div class="header-stats">
           <div class="stat-chip"><span class="dot pending"></span>{{ getCount('Pendiente') }} Pendientes</div>
@@ -41,7 +42,7 @@ import { FormsModule } from '@angular/forms';
               <tr>
                 <th>ID Pedido</th>
                 <th>Cliente</th>
-                <th>Producto</th>
+                <th>Producto (Talla y Cant.)</th>
                 <th>Fecha</th>
                 <th>Total</th>
                 <th>Estado</th>
@@ -50,17 +51,17 @@ import { FormsModule } from '@angular/forms';
             </thead>
             <tbody>
               <tr *ngFor="let order of filteredOrders">
-                <td class="order-id">{{ order.id }}</td>
+                <td class="order-id" [title]="order.realId">{{ order.id }}</td>
                 <td>
                   <div class="client-cell">
-                    <div class="avatar">{{ order.client[0] }}</div>
+                    <div class="avatar">{{ order.client[0]?.toUpperCase() }}</div>
                     <div>
                       <p class="client-name">{{ order.client }}</p>
                       <p class="client-email">{{ order.email }}</p>
                     </div>
                   </div>
                 </td>
-                <td>{{ order.product }}</td>
+                <td class="product-cell">{{ order.product }}</td>
                 <td class="date-col">{{ order.date }}</td>
                 <td class="total-col">{{ order.total | currency:'USD' }}</td>
                 <td>
@@ -77,7 +78,7 @@ import { FormsModule } from '@angular/forms';
               <tr *ngIf="filteredOrders.length === 0">
                 <td colspan="7" class="empty-state">
                   <span class="material-icons">receipt_long</span>
-                  <p>No hay pedidos que coincidan con el filtro.</p>
+                  <p>No hay pedidos registrados por el momento.</p>
                 </td>
               </tr>
             </tbody>
@@ -116,13 +117,14 @@ import { FormsModule } from '@angular/forms';
     th { text-align: left; padding: 1.2rem 1.5rem; color: #999; font-size: 0.78rem; text-transform: uppercase; border-bottom: 1px solid #f5f5f5; font-weight: 700; }
     td { padding: 1.2rem 1.5rem; border-bottom: 1px solid #f9f9f9; font-size: 0.95rem; }
 
-    .order-id { font-family: monospace; color: #888; font-size: 0.85rem; }
+    .order-id { font-family: monospace; color: #888; font-size: 0.85rem; cursor: help; }
 
     .client-cell { display: flex; align-items: center; gap: 0.8rem; }
     .avatar { width: 36px; height: 36px; background: #000; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
     .client-name { font-weight: 600; margin: 0 0 0.15rem; font-size: 0.9rem; }
     .client-email { color: #aaa; margin: 0; font-size: 0.78rem; }
 
+    .product-cell { max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
     .date-col { color: #888; font-size: 0.88rem; }
     .total-col { font-weight: 700; }
 
@@ -138,24 +140,57 @@ import { FormsModule } from '@angular/forms';
     .empty-state p { margin: 0; }
   `]
 })
-export class OrdersComponent {
+export class OrdersComponent implements OnInit {
+  orderService = inject(OrderService);
+
   searchQuery = '';
   activeTab = 'Todos';
   tabs = ['Todos', 'Pendiente', 'Completado', 'Cancelado'];
   statusOptions = ['Pendiente', 'Completado', 'Cancelado'];
 
-  orders = [
-    { id: '#ZAP-001', client: 'Juan Pérez', email: 'juan@example.com', product: 'Nike Air Max Minimal', date: '28 May, 2026', total: 189.99, status: 'Completado' },
-    { id: '#ZAP-002', client: 'María García', email: 'maria@example.com', product: 'Jordan Retro High', date: '27 May, 2026', total: 210.00, status: 'Pendiente' },
-    { id: '#ZAP-003', client: 'Carlos Ruiz', email: 'carlos@example.com', product: 'Yeezy Boost 350', date: '27 May, 2026', total: 220.00, status: 'Completado' },
-    { id: '#ZAP-004', client: 'Ana López', email: 'ana@example.com', product: 'Adidas Ultra Boost', date: '26 May, 2026', total: 160.00, status: 'Cancelado' },
-    { id: '#ZAP-005', client: 'Pedro Martínez', email: 'pedro@example.com', product: 'New Balance 574', date: '25 May, 2026', total: 140.00, status: 'Pendiente' },
-    { id: '#ZAP-006', client: 'Sofía Torres', email: 'sofia@example.com', product: 'Converse Chuck 70', date: '24 May, 2026', total: 95.00, status: 'Completado' },
-    { id: '#ZAP-007', client: 'Luis Herrera', email: 'luis@example.com', product: 'Puma RS-X', date: '23 May, 2026', total: 125.00, status: 'Pendiente' },
-    { id: '#ZAP-008', client: 'Valentina Rios', email: 'vale@example.com', product: 'Nike Dunk Low', date: '22 May, 2026', total: 175.00, status: 'Cancelado' },
-  ];
+  orders: any[] = [];
+  filteredOrders: any[] = [];
 
-  filteredOrders = [...this.orders];
+  ngOnInit() {
+    this.loadOrders();
+  }
+
+  loadOrders() {
+    this.orderService.getOrders().subscribe({
+      next: (data) => {
+        this.orders = data.map(item => ({
+          realId: item.id,
+          id: '#' + item.id.substring(0, 8).toUpperCase(),
+          client: item.user?.full_name || 'Invitado',
+          email: item.user?.email || 'N/A',
+          product: item.items.map((i: any) => `${i.product?.name || 'Zapato'} (${i.size}) x${i.quantity}`).join(', '),
+          date: new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+          total: Number(item.total_amount),
+          status: this.mapToFrontendStatus(item.status)
+        }));
+        this.applyFilters();
+      },
+      error: (err) => {
+        console.error('Error al cargar pedidos de la base de datos:', err);
+      }
+    });
+  }
+
+  mapToFrontendStatus(status: string): string {
+    const s = status.toLowerCase();
+    if (s === 'pendiente' || s === 'pending') return 'Pendiente';
+    if (s === 'completado' || s === 'completed') return 'Completado';
+    if (s === 'cancelado' || s === 'cancelled') return 'Cancelado';
+    return status;
+  }
+
+  mapToBackendStatus(status: string): string {
+    const s = status.toLowerCase();
+    if (s === 'pendiente') return 'pendiente';
+    if (s === 'completado') return 'completado';
+    if (s === 'cancelado') return 'cancelado';
+    return s;
+  }
 
   setTab(tab: string) {
     this.activeTab = tab;
@@ -172,7 +207,7 @@ export class OrdersComponent {
     if (this.searchQuery) {
       const q = this.searchQuery.toLowerCase();
       result = result.filter(o =>
-        o.client.toLowerCase().includes(q) || o.product.toLowerCase().includes(q)
+        o.client.toLowerCase().includes(q) || o.product.toLowerCase().includes(q) || o.id.toLowerCase().includes(q)
       );
     }
 
@@ -184,7 +219,18 @@ export class OrdersComponent {
   }
 
   changeStatus(order: any) {
-    // Los cambios quedan en memoria (datos estáticos)
-    this.applyFilters();
+    const backendStatus = this.mapToBackendStatus(order.status);
+    this.orderService.updateOrderStatus(order.realId, backendStatus).subscribe({
+      next: (res) => {
+        // Actualizar el estado en local
+        order.status = this.mapToFrontendStatus(res.status);
+        this.applyFilters();
+      },
+      error: (err) => {
+        console.error('Error al actualizar el estado del pedido:', err);
+        alert('Error al cambiar el estado del pedido: ' + (err?.error?.detail || 'Inténtalo de nuevo.'));
+        this.loadOrders(); // Recargar datos reales en caso de fallo
+      }
+    });
   }
 }

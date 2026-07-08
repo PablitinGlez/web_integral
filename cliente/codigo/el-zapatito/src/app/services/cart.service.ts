@@ -1,63 +1,138 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, effect } from '@angular/core';
 
 export interface CartItem {
-  productId: string;
-  name: string;
-  price: number;
-  image: string;
+  product: {
+    id: string;
+    name: string;
+    brand?: string;
+    price: number;
+    main_image_url?: string;
+  };
   size: number;
   quantity: number;
+  unit_price: number;
 }
-
-const STORAGE_KEY = 'el-zapatito-cart';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CartService {
-  private items = signal<CartItem[]>(this.loadFromStorage());
+  private cartItemsSignal = signal<CartItem[]>([]);
 
-  readonly cartItems = computed(() => this.items());
-  readonly totalItems = computed(() => this.items().reduce((acc, i) => acc + i.quantity, 0));
-  readonly totalPrice = computed(() => this.items().reduce((acc, i) => acc + i.price * i.quantity, 0));
+  // Exponer el signal de forma de solo lectura
+  cartItems = this.cartItemsSignal.asReadonly();
 
-  private loadFromStorage(): CartItem[] {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
+  // Control del estado abierto/cerrado del drawer del carrito
+  isCartOpen = signal(false);
 
-  private persist() {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.items()));
-    } catch {
-      // Almacenamiento no disponible; el carrito seguirá funcionando en memoria.
-    }
-  }
+  // Signals computados para contar e importe
+  cartCount = computed(() => {
+    return this.cartItemsSignal().reduce((acc, item) => acc + item.quantity, 0);
+  });
 
-  addItem(item: CartItem) {
-    this.items.update(list => {
-      const existing = list.find(i => i.productId === item.productId && i.size === item.size);
-      if (existing) {
-        return list.map(i =>
-          i === existing ? { ...i, quantity: i.quantity + item.quantity } : i
-        );
-      }
-      return [...list, item];
+  cartTotal = computed(() => {
+    return this.cartItemsSignal().reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
+  });
+
+  // Alias properties for main branch compatibility
+  totalItems = computed(() => this.cartCount());
+  totalPrice = computed(() => this.cartTotal());
+
+  constructor() {
+    this.loadCart();
+    
+    // Guardar en localStorage de forma reactiva ante cualquier cambio
+    effect(() => {
+      localStorage.setItem('cart_items', JSON.stringify(this.cartItemsSignal()));
     });
-    this.persist();
   }
 
+  private loadCart() {
+    try {
+      const stored = localStorage.getItem('cart_items');
+      if (stored) {
+        this.cartItemsSignal.set(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.error('Error al cargar el carrito de localStorage:', e);
+    }
+  }
+
+  addToCart(product: any, size: number, quantity: number) {
+    this.cartItemsSignal.update(items => {
+      const existingIndex = items.findIndex(
+        item => item.product.id === product.id && item.size === size
+      );
+
+      if (existingIndex > -1) {
+        const updated = [...items];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          quantity: updated[existingIndex].quantity + quantity
+        };
+        return updated;
+      } else {
+        return [...items, {
+          product: {
+            id: product.id,
+            name: product.name,
+            brand: product.brand,
+            price: Number(product.price),
+            main_image_url: product.main_image_url
+          },
+          size: size,
+          quantity: quantity,
+          unit_price: Number(product.price)
+        }];
+      }
+    });
+  }
+
+  // Alias method for main branch compatibility
+  addItem(item: any) {
+    const product = {
+      id: item.productId,
+      name: item.name,
+      price: item.price,
+      main_image_url: item.image,
+      brand: ''
+    };
+    this.addToCart(product, item.size, item.quantity);
+  }
+
+  removeFromCart(productId: string, size: number) {
+    this.cartItemsSignal.update(items => 
+      items.filter(item => !(item.product.id === productId && item.size === size))
+    );
+  }
+
+  // Alias method for main branch compatibility
   removeItem(productId: string, size: number) {
-    this.items.update(list => list.filter(i => !(i.productId === productId && i.size === size)));
-    this.persist();
+    this.removeFromCart(productId, size);
   }
 
+  updateQuantity(productId: string, size: number, quantity: number) {
+    if (quantity <= 0) {
+      this.removeFromCart(productId, size);
+      return;
+    }
+    
+    this.cartItemsSignal.update(items => {
+      return items.map(item => {
+        if (item.product.id === productId && item.size === size) {
+          return { ...item, quantity };
+        }
+        return item;
+      });
+    });
+  }
+
+  clearCart() {
+    this.cartItemsSignal.set([]);
+  }
+
+  // Alias method for main branch compatibility
   clear() {
-    this.items.set([]);
-    this.persist();
+    this.clearCart();
   }
 }
