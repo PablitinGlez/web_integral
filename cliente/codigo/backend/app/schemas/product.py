@@ -14,6 +14,9 @@ class ProductBase(BaseModel):
     base_price: Optional[Decimal] = None
     category_id: Optional[UUID] = None
     main_image_url: Optional[str] = None
+    gender: Optional[str] = None
+    colors: Optional[str] = None
+    sku: Optional[str] = None
     is_active: bool = True
 
 class ProductCreate(ProductBase):
@@ -25,6 +28,7 @@ class Product(ProductBase):
     updated_at: datetime
     images: List[ProductImage] = []
     inventory: List[Inventory] = []
+    category: Optional[Category] = None
 
     class Config:
         from_attributes = True

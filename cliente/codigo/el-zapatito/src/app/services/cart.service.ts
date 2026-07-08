@@ -34,6 +34,10 @@ export class CartService {
     return this.cartItemsSignal().reduce((acc, item) => acc + (item.unit_price * item.quantity), 0);
   });
 
+  // Alias properties for main branch compatibility
+  totalItems = computed(() => this.cartCount());
+  totalPrice = computed(() => this.cartTotal());
+
   constructor() {
     this.loadCart();
     
@@ -84,10 +88,27 @@ export class CartService {
     });
   }
 
+  // Alias method for main branch compatibility
+  addItem(item: any) {
+    const product = {
+      id: item.productId,
+      name: item.name,
+      price: item.price,
+      main_image_url: item.image,
+      brand: ''
+    };
+    this.addToCart(product, item.size, item.quantity);
+  }
+
   removeFromCart(productId: string, size: number) {
     this.cartItemsSignal.update(items => 
       items.filter(item => !(item.product.id === productId && item.size === size))
     );
+  }
+
+  // Alias method for main branch compatibility
+  removeItem(productId: string, size: number) {
+    this.removeFromCart(productId, size);
   }
 
   updateQuantity(productId: string, size: number, quantity: number) {
@@ -108,5 +129,10 @@ export class CartService {
 
   clearCart() {
     this.cartItemsSignal.set([]);
+  }
+
+  // Alias method for main branch compatibility
+  clear() {
+    this.clearCart();
   }
 }

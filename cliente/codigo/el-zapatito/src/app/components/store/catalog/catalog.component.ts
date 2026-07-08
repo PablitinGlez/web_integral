@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { ProductService } from '../../../services/product.service';
 import { CartService } from '../../../services/cart.service';
 
@@ -50,27 +51,42 @@ import { CartService } from '../../../services/cart.service';
 
         <!-- Product Grid -->
         <main class="main-content">
-          <div *ngIf="filteredProducts().length === 0" class="no-products">
-            <p>No hay productos disponibles con los filtros actuales.</p>
-          </div>
-
-          <div class="product-grid">
-            <!-- Al hacer clic en la tarjeta de producto, abrimos el modal de detalles -->
-            <div *ngFor="let item of filteredProducts()" class="product-card" (click)="openProductDetails(item)">
-              <div class="img-container">
-                <img [src]="item.main_image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=600'" [alt]="item.name">
-                <button class="quick-add" (click)="$event.stopPropagation(); openProductDetails(item)">+</button>
-              </div>
-              <div class="info">
-                <p class="brand">{{ item.brand || 'El Zapatito' }}</p>
-                <h4 class="name">{{ item.name }}</h4>
-                <div class="bottom-info">
-                  <p class="price">{{ item.price | currency:'USD' }}</p>
-                  <span class="tag" *ngIf="item.price > 200">Luxury</span>
+          @if (loading()) {
+            <div class="loading-grid">
+              @for (i of skeletons; track i) {
+                <div class="skeleton-card">
+                  <div class="skeleton-img"></div>
+                  <div class="skeleton-line short"></div>
+                  <div class="skeleton-line long"></div>
+                  <div class="skeleton-line medium"></div>
                 </div>
-              </div>
+              }
             </div>
-          </div>
+          } @else if (filteredProducts().length === 0) {
+            <div class="no-products">
+              <span class="material-icons">inventory_2</span>
+              <p>No hay productos disponibles con los filtros actuales.</p>
+            </div>
+          } @else {
+            <div class="product-grid">
+              @for (item of filteredProducts(); track item.id) {
+                <div class="product-card" (click)="openProductDetails(item)">
+                  <div class="img-container">
+                    <img [src]="item.main_image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=600'" [alt]="item.name">
+                    <button class="quick-add" (click)="$event.stopPropagation(); openProductDetails(item)">+</button>
+                  </div>
+                  <div class="info">
+                    <p class="brand">{{ item.brand || 'El Zapatito' }}</p>
+                    <h4 class="name">{{ item.name }}</h4>
+                    <div class="bottom-info">
+                      <p class="price">{{ item.price | currency:'USD' }}</p>
+                      <span class="tag" *ngIf="item.price > 200">Luxury</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
         </main>
       </div>
     </div>
@@ -203,7 +219,18 @@ import { CartService } from '../../../services/cart.service';
     .price { font-size: 1.2rem; font-weight: 700; margin: 0; }
     .tag { font-size: 0.6rem; color: #000; border: 1px solid #000; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
 
-    .no-products { text-align: center; padding: 5rem; border: 1px dashed #eee; border-radius: 20px; color: #888; }
+    .no-products { text-align: center; padding: 5rem; border: 1px dashed #eee; border-radius: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+    .no-products .material-icons { font-size: 3rem; color: #ccc; }
+
+    /* Skeleton loader */
+    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem 2rem; }
+    .skeleton-card { display: flex; flex-direction: column; gap: 0.8rem; }
+    .skeleton-img { height: 350px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 20px; }
+    .skeleton-line { height: 14px; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+    .skeleton-line.short { width: 40%; }
+    .skeleton-line.long { width: 80%; }
+    .skeleton-line.medium { width: 55%; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
     /* MODAL DE DETALLE PREMIUM */
     .modal-backdrop {
@@ -482,9 +509,14 @@ import { CartService } from '../../../services/cart.service';
 export class CatalogComponent implements OnInit {
   productService = inject(ProductService);
   cartService = inject(CartService);
+  router = inject(Router);
   
   products = signal<any[]>([]);
   filteredProducts = signal<any[]>([]);
+  loading = signal(true);
+
+  // Para el skeleton loader (6 tarjetas de carga animadas)
+  skeletons = [1, 2, 3, 4, 5, 6];
 
   // Filtros
   brands = ['Nike', 'Jordan', 'Adidas', 'New Balance', 'Yeezy', 'Converse'];
@@ -585,14 +617,18 @@ export class CatalogComponent implements OnInit {
   ];
 
   ngOnInit() {
+    this.loading.set(true);
     // Inicializamos con mock para que se vea rico de inmediato
     this.setProductsList(this.mockProducts);
 
     this.productService.getProducts().subscribe({
       next: (data) => {
-        if (data && data.length > 0) {
+        // Solo productos activos son visibles en el catálogo público
+        const activeOnly = (data ?? []).filter((p: any) => p.is_active !== false);
+
+        if (activeOnly.length > 0) {
           // Si los productos de la API no traen inventario, les creamos uno por defecto para que no fallen las tallas
-          const apiProducts = data.map(p => ({
+          const apiProducts = activeOnly.map(p => ({
             ...p,
             inventory: p.inventory && p.inventory.length > 0 ? p.inventory : [
               { size: 7.5, stock_quantity: 5 },
@@ -604,9 +640,11 @@ export class CatalogComponent implements OnInit {
           }));
           this.setProductsList(apiProducts);
         }
+        this.loading.set(false);
       },
-      error: () => {
-        console.warn('API con problemas, usando datos de prueba de catálogo.');
+      error: (err) => {
+        console.error('Error al cargar catálogo, usando datos de prueba:', err);
+        this.loading.set(false);
       }
     });
   }
@@ -688,5 +726,11 @@ export class CatalogComponent implements OnInit {
     setTimeout(() => {
       this.cartService.isCartOpen.set(true);
     }, 100);
+  }
+
+  goToProduct(item: any) {
+    if (item?.id) {
+      this.router.navigate(['/product', item.id]);
+    }
   }
 }
