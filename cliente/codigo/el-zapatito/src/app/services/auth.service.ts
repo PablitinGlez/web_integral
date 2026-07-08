@@ -1,17 +1,22 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
-
-const SUPABASE_URL = 'https://fnkmgolemfkyqldopjfr.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZua21nb2xlbWZreXFsZG9wamZyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzNTY4MDEsImV4cCI6MjA5NDkzMjgwMX0.MgHnGywGZYzb4mpcxBcd1KOSY9fOWyYi6sDZmVTZlWU';
+import { User } from '@supabase/supabase-js';
+import { supabase } from './supabase-client';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private supabase: SupabaseClient;
-  currentUser = signal<{ id: string; email: string; role: string } | null>(null);
+  private supabase = supabase;
+  currentUser = signal<{
+    id: string;
+    email: string;
+    role: string;
+    fullName: string | null;
+    createdAt: string | null;
+    age: number | null;
+    phone: string | null;
+  } | null>(null);
 
   constructor(private router: Router) {
-    this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
     this.init();
   }
 
@@ -34,19 +39,62 @@ export class AuthService {
   }
 
   private async loadProfile(user: User) {
-    // Try to get role from public users table, fallback to 'user'
+    // Try to get el perfil completo de la tabla pública users, con fallback a los metadatos del auth
     const { data } = await this.supabase
       .from('users')
-      .select('role')
+      .select('role, full_name, created_at, age, phone')
       .eq('id', user.id)
       .maybeSingle();
 
     this.currentUser.set({
       id: user.id,
       email: user.email!,
-      role: data?.role ?? 'user'
+      role: data?.role ?? 'user',
+      fullName: data?.full_name ?? (user.user_metadata?.['full_name'] as string) ?? null,
+      createdAt: data?.created_at ?? user.created_at ?? null,
+      age: data?.age ?? null,
+      phone: data?.phone ?? null
     });
     console.log('[AUTH] Profile loaded:', this.currentUser());
+  }
+
+  async updateProfile(profileData: { fullName: string; age?: number | null; phone?: string | null }) {
+    const user = this.currentUser();
+    if (!user) throw new Error('No hay una sesión activa.');
+
+    const trimmedName = profileData.fullName.trim();
+    if (!trimmedName) {
+      throw new Error('El nombre no puede estar vacío.');
+    }
+
+    if (profileData.age !== null && profileData.age !== undefined && (profileData.age < 0 || profileData.age > 120)) {
+      throw new Error('Ingresa una edad válida.');
+    }
+
+    const payload = {
+      id: user.id,
+      email: user.email,
+      full_name: trimmedName,
+      role: user.role,
+      age: profileData.age ?? null,
+      phone: profileData.phone?.trim() || null
+    };
+
+    // Usamos upsert porque algunos usuarios aún no tienen una fila creada en la tabla "users"
+    const { error } = await this.supabase
+      .from('users')
+      .upsert(payload, { onConflict: 'id' });
+
+    if (error) {
+      throw new Error('No se pudo actualizar el perfil: ' + error.message);
+    }
+
+    this.currentUser.set({
+      ...user,
+      fullName: trimmedName,
+      age: payload.age,
+      phone: payload.phone
+    });
   }
 
   async register(email: string, password: string, fullName: string) {
