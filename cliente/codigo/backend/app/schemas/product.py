@@ -10,8 +10,8 @@ class ProductBase(BaseModel):
     name: str
     brand: Optional[str] = None
     description: Optional[str] = None
-    price: Decimal
-    base_price: Optional[Decimal] = None
+    price: float
+    base_price: Optional[float] = None
     category_id: Optional[UUID] = None
     main_image_url: Optional[str] = None
     gender: Optional[str] = None
@@ -21,6 +21,20 @@ class ProductBase(BaseModel):
 
 class ProductCreate(ProductBase):
     pass
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    brand_id: Optional[UUID] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    base_price: Optional[float] = None
+    category_id: Optional[UUID] = None
+    main_image_url: Optional[str] = None
+    gender: Optional[str] = None
+    colors: Optional[str] = None
+    sku: Optional[str] = None
+    is_active: Optional[bool] = None
+
 
 class Product(ProductBase):
     id: UUID

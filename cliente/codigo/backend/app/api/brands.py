@@ -73,6 +73,36 @@ def update_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = D
     return db_brand
 
 
+@router.patch("/{brand_id}", response_model=brand_schema.Brand)
+def patch_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = Depends(get_db)):
+    db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand_id).first()
+    if not db_brand:
+        raise HTTPException(status_code=404, detail="Brand not found")
+
+    update_data = brand.model_dump(exclude_unset=True) if hasattr(brand, "model_dump") else brand.dict(exclude_unset=True)
+
+    if "name" in update_data:
+        name_normalized = update_data["name"].strip()
+        existing = db.query(brand_model.Brand).filter(
+            func.lower(brand_model.Brand.name) == func.lower(name_normalized),
+            brand_model.Brand.id != brand_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe una marca con este nombre.")
+        update_data["name"] = name_normalized
+
+    if "description" in update_data and update_data["description"] is not None:
+        update_data["description"] = update_data["description"].strip()
+
+    for key, value in update_data.items():
+        setattr(db_brand, key, value)
+
+    db.commit()
+    db.refresh(db_brand)
+    return db_brand
+
+
+
 @router.delete("/{brand_id}")
 def delete_brand(brand_id: str, db: Session = Depends(get_db)):
     db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand_id).first()

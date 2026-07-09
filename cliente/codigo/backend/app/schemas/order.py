@@ -8,9 +8,9 @@ from .user import User
 
 class OrderItemBase(BaseModel):
     product_id: UUID
-    size: Decimal
+    size: float
     quantity: int
-    unit_price: Decimal
+    unit_price: float
 
 class OrderItemCreate(OrderItemBase):
     pass
@@ -25,7 +25,7 @@ class OrderItemResponse(OrderItemBase):
 
 class OrderBase(BaseModel):
     status: str = "pendiente"
-    total_amount: Decimal
+    total_amount: float
     shipping_address: Optional[str] = None
 
 class OrderCreate(BaseModel):

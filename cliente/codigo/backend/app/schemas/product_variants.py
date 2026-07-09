@@ -18,7 +18,7 @@ class ProductImage(ProductImageBase):
         from_attributes = True
 
 class InventoryBase(BaseModel):
-    size: Decimal
+    size: float
     stock_quantity: int
 
 class InventoryCreate(InventoryBase):

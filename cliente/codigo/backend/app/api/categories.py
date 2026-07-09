@@ -34,6 +34,20 @@ def update_category(category_id: str, category: cat_schema.CategoryUpdate, db: S
     db.refresh(db_cat)
     return db_cat
 
+@router.patch("/{category_id}", response_model=cat_schema.Category)
+def patch_category(category_id: str, category: cat_schema.CategoryUpdate, db: Session = Depends(get_db)):
+    db_cat = db.query(cat_model.Category).filter(cat_model.Category.id == category_id).first()
+    if not db_cat:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    update_data = category.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_cat, key, value)
+        
+    db.commit()
+    db.refresh(db_cat)
+    return db_cat
+
 @router.delete("/{category_id}", response_model=cat_schema.Category)
 def deactivate_category(category_id: str, db: Session = Depends(get_db)):
     # Soft delete (Desactivar)
