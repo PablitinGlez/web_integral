@@ -41,7 +41,7 @@ def deactivate_category(category_id: str, db: Session = Depends(get_db)):
     if not db_cat:
         raise HTTPException(status_code=404, detail="Category not found")
     
-    db_cat.is_active = False
+    db_cat.is_active = False  # type: ignore
     db.commit()
     db.refresh(db_cat)
     return db_cat
