@@ -1,7 +1,9 @@
 from fastapi import HTTPException, Security, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-import httpx
+import urllib.request
+import urllib.error
+import json
 from ..core.config import settings
 from ..database import get_db
 from ..models.user import User
@@ -9,19 +11,21 @@ from ..models.user import User
 security = HTTPBearer()
 
 def verify_token_with_supabase(token: str) -> dict:
-    headers = {
-        "apikey": settings.SUPABASE_ANON_KEY,
-        "Authorization": f"Bearer {token}",
-    }
-    with httpx.Client() as client:
-        response = client.get(
-            f"{settings.SUPABASE_URL}/auth/v1/user",
-            headers=headers,
-            timeout=5
-        )
-    if response.status_code != 200:
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/user"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "apikey": settings.SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {token}"
+        }
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            return json.loads(response.read().decode())
+    except urllib.error.HTTPError as e:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
-    return response.json()
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Error de autenticación con Supabase: {str(e)}")
 
 class AuthService:
     @staticmethod
