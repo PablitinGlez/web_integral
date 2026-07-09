@@ -23,15 +23,16 @@ def get_current_user_id_optional(
         return None
     token = credentials.credentials
     try:
-        from ..services.auth_service import decode_and_verify_token
-        payload = decode_and_verify_token(token)
+        from ..services.auth_service import verify_token_with_supabase
+        user_data = verify_token_with_supabase(token)
     except Exception:
         return None
 
-    uid = payload.get("sub")
-    email = payload.get("email")
-    user_metadata = payload.get("user_metadata", {})
+    uid = user_data.get("id")
+    email = user_data.get("email")
+    user_metadata = user_data.get("user_metadata", {})
     full_name = user_metadata.get("full_name") if isinstance(user_metadata, dict) else None
+
 
     # Sync/Ensure user exists in the public.users table
     user = db.query(User).filter(User.id == uid).first()
