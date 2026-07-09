@@ -37,6 +37,10 @@ export const routes: Routes = [
             {
                 path: 'profile',
                 loadComponent: () => import('./components/auth/profile.component').then(c => c.ProfileComponent)
+            },
+            {
+                path: 'checkout',
+                loadComponent: () => import('./components/store/checkout/checkout.component').then(c => c.CheckoutComponent)
             }
         ]
     },

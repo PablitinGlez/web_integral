@@ -21,7 +21,9 @@ CREATE TABLE users (
     hashed_password VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'client',
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    age INTEGER,
+    phone VARCHAR(50)
 );
 
 CREATE TABLE categories (
@@ -78,6 +80,7 @@ CREATE TABLE orders (
     status VARCHAR(50) DEFAULT 'pending',
     total_amount NUMERIC(10, 2) NOT NULL,
     shipping_address TEXT,
+    paypal_order_id VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

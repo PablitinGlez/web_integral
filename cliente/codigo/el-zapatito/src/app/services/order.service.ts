@@ -12,7 +12,7 @@ export class OrderService {
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
-  createOrder(orderData: { shipping_address?: string; items: any[] }): Observable<any> {
+  createOrder(orderData: { shipping_address?: string; paypal_order_id?: string; items: any[] }): Observable<any> {
     return from(this.authService.getSessionToken()).pipe(
       switchMap(token => {
         let headers = new HttpHeaders();
@@ -59,5 +59,9 @@ export class OrderService {
         return this.http.put<any>(`${this.apiUrl}/${orderId}/status?status=${encodeURIComponent(status)}`, {}, { headers });
       })
     );
+  }
+
+  getPaypalConfig(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/config/paypal`);
   }
 }

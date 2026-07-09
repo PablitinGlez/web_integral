@@ -98,7 +98,9 @@ CREATE TABLE users (
     full_name VARCHAR(255),
     role VARCHAR(50) DEFAULT 'user', -- 'admin' o 'user'
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    age INTEGER,
+    phone VARCHAR(50)
 );
 
 -- Índices para mejorar rendimiento

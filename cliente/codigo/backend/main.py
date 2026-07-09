@@ -9,6 +9,15 @@ from app.models import product, category, brand, user, product_variants, order
 # Crear tablas si no existen
 Base.metadata.create_all(bind=engine)
 
+# Ejecutar migración preventiva para agregar columna paypal_order_id
+try:
+    with engine.connect() as connection:
+        from sqlalchemy import text
+        connection.execute(text("ALTER TABLE orders ADD COLUMN paypal_order_id VARCHAR(100)"))
+        connection.commit()
+except Exception:
+    pass # Ignorar si la columna ya existe o si hay algún problema transitorio
+
 app = FastAPI(title="El Zapatito API")
 
 # Configurar CORS

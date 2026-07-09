@@ -13,20 +13,44 @@ from ..services.auth_service import AuthService
 router = APIRouter(prefix="/orders", tags=["orders"], redirect_slashes=False)
 security = HTTPBearer(auto_error=False)
 
-def get_current_user_id_optional(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Optional[str]:
+from ..models.user import User
+
+def get_current_user_id_optional(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: Session = Depends(get_db)
+) -> Optional[str]:
     if not credentials:
         return None
     token = credentials.credentials
     try:
-        payload = jwt.decode(
-            token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
-            audience="authenticated"
-        )
-        return payload.get("sub")
-    except JWTError:
+        from ..services.auth_service import decode_and_verify_token
+        payload = decode_and_verify_token(token)
+    except Exception:
         return None
+
+    uid = payload.get("sub")
+    email = payload.get("email")
+    user_metadata = payload.get("user_metadata", {})
+    full_name = user_metadata.get("full_name") if isinstance(user_metadata, dict) else None
+
+    # Sync/Ensure user exists in the public.users table
+    user = db.query(User).filter(User.id == uid).first()
+    if not user:
+        user = User(
+            id=uid,
+            email=email,
+            full_name=full_name,
+            role="user",
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return str(uid)
+
+
+
 
 @router.post("/", response_model=order_schema.OrderResponse)
 def create_order(
@@ -74,11 +98,13 @@ def create_order(
             )
             
         # Crear orden
+        status = "completado" if order_in.paypal_order_id else "pendiente"
         new_order = Order(
             user_id=user_id,
-            status="pendiente",
+            status=status,
             total_amount=total,
             shipping_address=order_in.shipping_address,
+            paypal_order_id=order_in.paypal_order_id,
             items=order_items
         )
         
@@ -165,3 +191,7 @@ def update_order_status(
         joinedload(Order.items).joinedload(OrderItem.product),
         joinedload(Order.user)
     ).filter(Order.id == order_id).first()
+
+@router.get("/config/paypal")
+def get_paypal_config():
+    return {"client_id": settings.PAYPAL_CLIENT_ID or "test"}

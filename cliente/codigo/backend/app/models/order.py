@@ -12,6 +12,7 @@ class Order(Base):
     status = Column(String(50), default="pending") # pending, completed, cancelled
     total_amount = Column(Numeric(10, 2), nullable=False)
     shipping_address = Column(Text, nullable=True)
+    paypal_order_id = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relaciones
