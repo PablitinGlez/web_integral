@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     SUPABASE_JWT_SECRET: str = "mock_secret"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    
+    PAYPAL_CLIENT_ID: str = "test"
+    PAYPAL_CLIENT_SECRET: str = "test"
 
     class Config:
         env_file = ".env"

@@ -3,7 +3,10 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 from ..services.auth_service import AuthService
 from ..core.config import settings
-import httpx
+import urllib.request
+import urllib.error
+import json
+
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 security = HTTPBearer()
@@ -51,22 +54,29 @@ def login(body: LoginRequest):
     4. Pega el token y haz clic en Authorize.
     5. Ahora puedes usar cualquier endpoint protegido (como GET /auth/me).
     """
-    supabase_login_url = f"{settings.SUPABASE_URL}/auth/v1/token?grant_type=password"
-
-    headers = {
-        "apikey": settings.SUPABASE_ANON_KEY,
-        "Content-Type": "application/json",
-    }
-    payload = {"email": body.email, "password": body.password}
-
-    with httpx.Client() as client:
-        response = client.post(supabase_login_url, json=payload, headers=headers)
-
-    if response.status_code != 200:
-        error_detail = response.json().get("error_description", "Credenciales incorrectas")
+    supabase_login_url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/token?grant_type=password"
+    req = urllib.request.Request(
+        supabase_login_url,
+        data=json.dumps({"email": body.email, "password": body.password}).encode(),
+        headers={
+            "apikey": settings.SUPABASE_ANON_KEY,
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+    except urllib.error.HTTPError as e:
+        try:
+            error_data = json.loads(e.read().decode())
+            error_detail = error_data.get("error_description", "Credenciales incorrectas")
+        except Exception:
+            error_detail = "Credenciales incorrectas"
         raise HTTPException(status_code=401, detail=error_detail)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al conectar con Supabase: {str(e)}")
 
-    data = response.json()
     return LoginResponse(
         access_token=data["access_token"],
         token_type="bearer",

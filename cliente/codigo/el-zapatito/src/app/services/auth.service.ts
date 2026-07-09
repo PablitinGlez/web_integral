@@ -16,15 +16,25 @@ export class AuthService {
     phone: string | null;
   } | null>(null);
 
+  isInitialized = signal(false);
+  private initCallbacks: (() => void)[] = [];
+
   constructor(private router: Router) {
     this.init();
   }
 
   private async init() {
-    // Restore session if exists
-    const { data: { session } } = await this.supabase.auth.getSession();
-    if (session?.user) {
-      await this.loadProfile(session.user);
+    try {
+      // Restore session if exists
+      const { data: { session } } = await this.supabase.auth.getSession();
+      if (session?.user) {
+        await this.loadProfile(session.user);
+      }
+    } catch (e) {
+      console.error('[AUTH] getSession error:', e);
+    } finally {
+      this.isInitialized.set(true);
+      this.resolveInitCallbacks();
     }
 
     // Listen for auth changes
@@ -35,6 +45,24 @@ export class AuthService {
       } else {
         this.currentUser.set(null);
       }
+      this.isInitialized.set(true);
+      this.resolveInitCallbacks();
+    });
+  }
+
+  private resolveInitCallbacks() {
+    while (this.initCallbacks.length > 0) {
+      const cb = this.initCallbacks.shift();
+      if (cb) cb();
+    }
+  }
+
+  waitForAuthInit(): Promise<void> {
+    if (this.isInitialized()) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      this.initCallbacks.push(resolve);
     });
   }
 

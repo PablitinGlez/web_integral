@@ -27,9 +27,11 @@ class OrderBase(BaseModel):
     status: str = "pendiente"
     total_amount: float
     shipping_address: Optional[str] = None
+    paypal_order_id: Optional[str] = None
 
 class OrderCreate(BaseModel):
     shipping_address: Optional[str] = None
+    paypal_order_id: Optional[str] = None
     items: List[OrderItemCreate]
 
 class OrderResponse(OrderBase):

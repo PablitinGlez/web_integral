@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { Router, RouterLink } from '@angular/router';
@@ -34,7 +34,7 @@ import { CommonModule } from '@angular/common';
     .error { color: #cc0000; background: #fff0f0; padding: 0.5rem; border-radius: 4px; }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   email = '';
   password = '';
   
@@ -46,6 +46,13 @@ export class LoginComponent {
     private auth: AuthService, 
     private router: Router
   ) {}
+
+  async ngOnInit() {
+    await this.auth.waitForAuthInit();
+    if (this.auth.currentUser()) {
+      this.router.navigate(['/']);
+    }
+  }
 
   async doLogin() {
     this.errorMsg.set('');
