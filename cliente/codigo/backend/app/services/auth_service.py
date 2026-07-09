@@ -47,18 +47,31 @@ class AuthService:
         full_name = user_metadata.get("full_name") if isinstance(user_metadata, dict) else None
 
         # Sync user to database
-        user = db.query(User).filter(User.id == uid).first()
-        if not user:
-            user = User(
-                id=uid,
-                email=email,
-                full_name=full_name,
-                role="user",
-                is_active=True
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        # Check if db is a Session. If not (e.g. called directly), retrieve one manually.
+        from sqlalchemy.orm import Session as SQLAlchemySession
+        db_session = db
+        is_local_session = not isinstance(db, SQLAlchemySession)
+        if is_local_session:
+            from ..database import SessionLocal
+            db_session = SessionLocal()
+
+        try:
+            user = db_session.query(User).filter(User.id == uid).first()
+            if not user:
+                user = User(
+                    id=uid,
+                    email=email,
+                    full_name=full_name,
+                    role="user",
+                    is_active=True
+                )
+                db_session.add(user)
+                db_session.commit()
+                db_session.refresh(user)
+        finally:
+            if is_local_session:
+                db_session.close()
+
 
         # Return a payload structure matching expectations
         return {
