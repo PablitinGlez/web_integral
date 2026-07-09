@@ -1,10 +1,9 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterOutlet, RouterLink } from '@angular/router';
+import { RouterOutlet, RouterLink, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { CartService } from '../../../services/cart.service';
-import { OrderService } from '../../../services/order.service';
 
 @Component({
   selector: 'app-store-layout',
@@ -56,7 +55,9 @@ import { OrderService } from '../../../services/order.service';
     </nav>
 
     <!-- Backdrop del Carrito -->
-    <div class="cart-backdrop" *ngIf="cart.isCartOpen()" (click)="toggleCart()"></div>
+    @if (cart.isCartOpen()) {
+      <div class="cart-backdrop" (click)="toggleCart()"></div>
+    }
 
     <!-- Drawer del Carrito Slidable -->
     <div class="cart-drawer" [class.open]="cart.isCartOpen()">
@@ -67,18 +68,18 @@ import { OrderService } from '../../../services/order.service';
         </button>
       </header>
 
-      <!-- PASO 1: Lista del Carrito -->
-      @if (checkoutStep === 'cart') {
-        <main class="cart-content">
-          @if (cart.cartItems().length === 0) {
-            <div class="empty-cart">
-              <span class="material-icons empty-icon">shopping_basket</span>
-              <p>Tu carrito está vacío</p>
-              <button class="btn-shop-now" (click)="toggleCart()" routerLink="/catalog">Ver Catálogo</button>
-            </div>
-          } @else {
-            <div class="cart-items-list">
-              <div class="cart-item-card" *ngFor="let item of cart.cartItems()">
+      <!-- Lista del Carrito -->
+      <main class="cart-content">
+        @if (cart.cartItems().length === 0) {
+          <div class="empty-cart">
+            <span class="material-icons empty-icon">shopping_basket</span>
+            <p>Tu carrito está vacío</p>
+            <button class="btn-shop-now" (click)="toggleCart()" routerLink="/catalog">Ver Catálogo</button>
+          </div>
+        } @else {
+          <div class="cart-items-list">
+            @for (item of cart.cartItems(); track item.product.id + '-' + item.size) {
+              <div class="cart-item-card">
                 <img [src]="item.product.main_image_url || 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=200'" [alt]="item.product.name" class="item-img">
                 <div class="item-info">
                   <p class="item-brand">{{ item.product.brand || 'El Zapatito' }}</p>
@@ -99,11 +100,13 @@ import { OrderService } from '../../../services/order.service';
                   {{ (item.unit_price * item.quantity) | currency:'USD' }}
                 </div>
               </div>
-            </div>
-          }
-        </main>
+            }
+          </div>
+        }
+      </main>
 
-        <footer class="cart-footer" *ngIf="cart.cartItems().length > 0">
+      @if (cart.cartItems().length > 0) {
+        <footer class="cart-footer">
           <div class="summary-row">
             <span>Subtotal</span>
             <strong>{{ cart.cartTotal() | currency:'USD' }}</strong>
@@ -121,60 +124,6 @@ import { OrderService } from '../../../services/order.service';
             Proceder al Pago
           </button>
         </footer>
-      }
-
-      <!-- PASO 2: Datos de Envío -->
-      @if (checkoutStep === 'shipping') {
-        <main class="cart-content">
-          <button class="btn-back" (click)="checkoutStep = 'cart'">
-            &larr; Volver al carrito
-          </button>
-          
-          <div class="checkout-form-container">
-            <h3>Dirección de Envío</h3>
-            <p class="checkout-instructions">Por favor, ingresa los detalles del domicilio de entrega para registrar tu pedido.</p>
-            
-            <textarea 
-              [(ngModel)]="shippingAddress" 
-              placeholder="Calle, Número, Colonia, Municipio, Estado, Código Postal..."
-              rows="4"
-              class="address-textarea">
-            </textarea>
-
-            @if (orderError) {
-              <p class="checkout-error">{{ orderError }}</p>
-            }
-          </div>
-        </main>
-
-        <footer class="cart-footer">
-          <div class="summary-row total-row">
-            <span>Total a pagar</span>
-            <strong>{{ cart.cartTotal() | currency:'USD' }}</strong>
-          </div>
-          <button 
-            class="btn-checkout btn-place-order" 
-            [disabled]="isSubmittingOrder || !shippingAddress.trim()"
-            (click)="submitOrder()">
-            {{ isSubmittingOrder ? 'Procesando...' : 'Confirmar y Pagar' }}
-          </button>
-        </footer>
-      }
-
-      <!-- PASO 3: Éxito -->
-      @if (checkoutStep === 'success') {
-        <main class="cart-content success-screen">
-          <div class="success-illustration">
-            <span class="material-icons success-icon">check_circle</span>
-          </div>
-          <h2>¡Pedido Confirmado!</h2>
-          <p class="success-message">Hemos registrado tu compra exitosamente. Tu número de pedido es:</p>
-          <code class="order-id-badge">{{ createdOrderId }}</code>
-          <p class="success-subtext">El calzado ya está siendo preparado para su envío. ¡Gracias por confiar en El Zapatito!</p>
-          <button class="btn-success-close" (click)="closeSuccessCart()">
-            Seguir comprando
-          </button>
-        </main>
       }
     </div>
 
@@ -296,6 +245,8 @@ import { OrderService } from '../../../services/order.service';
       display: flex;
       flex-direction: column;
       transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+      box-sizing: border-box;
     }
     .cart-drawer.open {
       right: 0;
@@ -335,6 +286,7 @@ import { OrderService } from '../../../services/order.service';
       padding: 2rem;
       display: flex;
       flex-direction: column;
+      min-height: 0;
     }
 
     /* Items */
@@ -584,21 +536,258 @@ import { OrderService } from '../../../services/order.service';
       from { opacity: 0; }
       to { opacity: 1; }
     }
+
+    /* Direcciones en Checkout */
+    .address-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      color: #888;
+    }
+    .mini-spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #000;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 0.5rem;
+    }
+    .no-addresses-checkout {
+      text-align: center;
+      padding: 2rem 1rem;
+      border: 1px dashed #ddd;
+      border-radius: 12px;
+      background: #fafafa;
+    }
+    .no-addresses-checkout p {
+      margin: 0 0 1rem;
+      color: #666;
+      font-size: 0.92rem;
+    }
+    .btn-add-first-address {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.88rem;
+    }
+    .address-options-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      margin-bottom: 1.5rem;
+    }
+    .address-option-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      background: #fafafa;
+      transition: all 0.2s ease;
+    }
+    .address-option-card:hover {
+      border-color: #bbb;
+      background: #fdfdfd;
+    }
+    .address-option-card.selected {
+      border-color: #000;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+    .card-radio-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 20px;
+      width: 20px;
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+    .custom-radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      display: inline-block;
+      position: relative;
+      transition: all 0.2s;
+    }
+    .address-option-card.selected .custom-radio {
+      border-color: #000;
+    }
+    .custom-radio.checked::after {
+      content: '';
+      width: 8px;
+      height: 8px;
+      background: #000;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .card-details {
+      flex: 1;
+      text-align: left;
+    }
+    .card-header-addr {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+    .card-header-addr strong {
+      font-size: 0.95rem;
+      color: #000;
+    }
+    .default-tag {
+      background: #f0f0f0;
+      color: #666;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.15rem 0.5rem;
+      border-radius: 10px;
+      text-transform: uppercase;
+    }
+    .addr-text-line {
+      margin: 0;
+      font-size: 0.88rem;
+      color: #333;
+    }
+    .addr-subtext-line {
+      margin: 0.15rem 0 0;
+      font-size: 0.82rem;
+      color: #666;
+    }
+    .addr-phone-line {
+      margin: 0.25rem 0 0;
+      font-size: 0.82rem;
+      color: #888;
+    }
+    .btn-add-address-checkout {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      background: none;
+      border: 1px dashed #ccc;
+      color: #555;
+      width: 100%;
+      padding: 0.8rem;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.88rem;
+      transition: all 0.2s;
+    }
+    .btn-add-address-checkout:hover {
+      border-color: #000;
+      color: #000;
+      background: #fafafa;
+    }
+
+    /* Formulario en Checkout */
+    .address-form-checkout {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      background: #fafafa;
+      border: 1px solid #eee;
+      border-radius: 12px;
+      padding: 1.2rem;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.8rem;
+    }
+    .form-row.three-cols {
+      grid-template-columns: 1fr 1fr 1fr;
+    }
+    @media (max-width: 480px) {
+      .form-row, .form-row.three-cols {
+        grid-template-columns: 1fr;
+      }
+    }
+    .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      text-align: left;
+    }
+    .form-field label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .form-field input {
+      width: 100%;
+      padding: 0.7rem;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
+    .form-field input:focus {
+      border-color: #000;
+      outline: none;
+    }
+    .address-error {
+      color: #cc0000;
+      font-size: 0.85rem;
+      margin: 0;
+      text-align: left;
+    }
+    .form-actions {
+      display: flex;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+    .btn-cancel {
+      flex: 1;
+      background: #eee;
+      color: #333;
+      border: none;
+      padding: 0.7rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save-addr {
+      flex: 1;
+      background: #000;
+      color: #fff;
+      border: none;
+      padding: 0.7rem;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save-addr:disabled, .btn-cancel:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `]
 })
 export class StoreLayoutComponent {
   auth = inject(AuthService);
   cart = inject(CartService);
-  orderService = inject(OrderService);
+  private router = inject(Router);
 
   isDropdownOpen = false;
-
-  // Checkout flow state
-  checkoutStep: 'cart' | 'shipping' | 'success' = 'cart';
-  shippingAddress = '';
-  isSubmittingOrder = false;
-  createdOrderId = '';
-  orderError = '';
 
   toggleDropdown() {
     this.isDropdownOpen = !this.isDropdownOpen;
@@ -606,61 +795,15 @@ export class StoreLayoutComponent {
 
   toggleCart() {
     this.cart.isCartOpen.set(!this.cart.isCartOpen());
-    if (this.cart.isCartOpen()) {
-      // Reiniciar estado del checkout al abrir
-      this.checkoutStep = 'cart';
-      this.orderError = '';
-    }
   }
 
   proceedToCheckout() {
     if (!this.auth.currentUser()) {
       this.toggleCart();
-      // Opcional: Redirigir a login
       alert('Por favor, inicia sesión para completar tu compra.');
-      // O directamente navegar
       return;
     }
-    this.checkoutStep = 'shipping';
-  }
-
-  submitOrder() {
-    if (!this.shippingAddress.trim()) {
-      this.orderError = 'Por favor ingresa una dirección de envío.';
-      return;
-    }
-
-    this.isSubmittingOrder = true;
-    this.orderError = '';
-
-    const orderData = {
-      shipping_address: this.shippingAddress,
-      items: this.cart.cartItems().map(item => ({
-        product_id: item.product.id,
-        size: item.size,
-        quantity: item.quantity,
-        unit_price: item.unit_price
-      }))
-    };
-
-    this.orderService.createOrder(orderData).subscribe({
-      next: (res) => {
-        this.createdOrderId = res.id;
-        this.cart.clearCart();
-        this.checkoutStep = 'success';
-        this.isSubmittingOrder = false;
-        this.shippingAddress = '';
-      },
-      error: (err) => {
-        console.error('Error al registrar el pedido:', err);
-        this.orderError = err?.error?.detail || 'Error al procesar el pedido. Revisa el stock disponible de las tallas.';
-        this.isSubmittingOrder = false;
-      }
-    });
-  }
-
-  closeSuccessCart() {
-    this.cart.isCartOpen.set(false);
-    this.checkoutStep = 'cart';
+    this.toggleCart(); // Cierra el carrito
+    this.router.navigate(['/checkout']);
   }
 }

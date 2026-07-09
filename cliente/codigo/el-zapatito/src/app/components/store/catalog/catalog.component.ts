@@ -510,7 +510,7 @@ export class CatalogComponent implements OnInit {
   productService = inject(ProductService);
   cartService = inject(CartService);
   router = inject(Router);
-  
+
   products = signal<any[]>([]);
   filteredProducts = signal<any[]>([]);
   loading = signal(true);
