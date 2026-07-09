@@ -17,8 +17,41 @@ VALID_GENDERS = {"Hombre", "Mujer", "Niño", "Unisex"}
 router = APIRouter(prefix="/products", tags=["products"], redirect_slashes=False)
 
 @router.get("/", response_model=List[product_schema.Product])
-def get_products(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    products = db.query(product_model.Product).offset(skip).limit(limit).all()
+def get_products(
+    skip: int = 0,
+    limit: int = 100,
+    category_id: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    gender: Optional[str] = None,
+    brand_id: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(product_model.Product)
+
+    if category_id:
+        query = query.filter(product_model.Product.category_id == category_id)
+    if min_price is not None:
+        query = query.filter(product_model.Product.price >= min_price)
+    if max_price is not None:
+        query = query.filter(product_model.Product.price <= max_price)
+    if gender:
+        query = query.filter(product_model.Product.gender == gender)
+    if brand_id:
+        query = query.filter(product_model.Product.brand_id == brand_id)
+    if is_active is not None:
+        query = query.filter(product_model.Product.is_active == is_active)
+    if search:
+        search_filter = f"%{search}%"
+        query = query.join(brand_model.Brand, product_model.Product.brand_id == brand_model.Brand.id, isouter=True).filter(
+            (product_model.Product.name.ilike(search_filter)) |
+            (product_model.Product.description.ilike(search_filter)) |
+            (brand_model.Brand.name.ilike(search_filter))
+        )
+
+    products = query.offset(skip).limit(limit).all()
     return products
 
 @router.get("/{product_id}", response_model=product_schema.Product)
