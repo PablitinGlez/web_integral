@@ -22,6 +22,16 @@ class AddressUpdate(AddressBase):
     pass
 
 
+class AddressPatch(BaseModel):
+    label: Optional[str] = Field(None, min_length=1, max_length=50)
+    street: Optional[str] = Field(None, min_length=1)
+    city: Optional[str] = Field(None, min_length=1, max_length=100)
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    country: Optional[str] = None
+    phone: Optional[str] = None
+
+
 class Address(AddressBase):
     id: UUID
     user_id: UUID

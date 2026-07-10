@@ -99,6 +99,25 @@ def update_address(
     return address
 
 
+@router.patch("/{address_id}", response_model=address_schema.Address)
+def patch_address(
+    address_id: UUID,
+    payload: address_schema.AddressPatch,
+    user_id: UUID = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    address = _get_owned_address(db, address_id, user_id)
+
+    # Solo se actualizan los campos que realmente vinieron en la petición
+    updates = payload.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(address, field, value)
+
+    db.commit()
+    db.refresh(address)
+    return address
+
+
 @router.delete("/{address_id}")
 def delete_address(
     address_id: UUID,
