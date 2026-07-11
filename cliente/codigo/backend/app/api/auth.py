@@ -1,8 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+from typing import Optional
 from ..services.auth_service import AuthService
 from ..core.config import settings
+from ..database import get_db
+from ..models import user as user_model
+from ..schemas.user import UserProfileUpdate, UserProfilePatch
 import urllib.request
 import urllib.error
 import json
@@ -28,9 +33,36 @@ class UserResponse(BaseModel):
     id: str
     email: str
     role: str
+    full_name: Optional[str] = None
+    age: Optional[int] = None
+    phone: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+def _get_or_build_user(db: Session, payload: dict) -> user_model.User:
+    """Obtiene la fila del usuario en la tabla `users`. Si todavía no existe
+    (por ejemplo, un usuario recién registrado que nunca guardó su perfil),
+    la crea con los datos básicos que trae el token, para que quede lista
+    y se pueda consultar/editar sin errores."""
+    user_id = payload.get("sub")
+    user = db.query(user_model.User).filter(user_model.User.id == user_id).first()
+
+    if not user:
+        user = user_model.User(
+            id=user_id,
+            email=payload.get("email"),
+            full_name=(payload.get("user_metadata") or {}).get("full_name"),
+            role=payload.get("role", "user")
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return user
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -90,26 +122,97 @@ def login(body: LoginRequest):
     response_model=UserResponse,
     summary="Obtener usuario actual (protegido 🔒)",
     description=(
-        "Devuelve los datos del usuario autenticado. "
+        "Devuelve los datos del usuario autenticado, incluyendo nombre, edad y teléfono. "
         "Requiere Bearer token — usa primero POST /auth/login para obtenerlo."
     ),
 )
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
 ):
     payload = AuthService.verify_supabase_token(credentials)
 
-    user_id = payload.get("sub")
-    email = payload.get("email")
-    role = payload.get("role", "authenticated")
-
-    if not user_id or not email:
+    if not payload.get("sub") or not payload.get("email"):
         raise HTTPException(
             status_code=401,
             detail="Token inválido: no contiene datos de usuario",
         )
 
-    return UserResponse(id=user_id, email=email, role=role)
+    user = _get_or_build_user(db, payload)
+
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        age=user.age,
+        phone=user.phone,
+    )
 
 
+@router.put(
+    "/me",
+    response_model=UserResponse,
+    summary="Editar perfil (protegido 🔒)",
+    description=(
+        "Reemplaza el nombre, edad y teléfono del usuario autenticado. "
+        "Requiere Bearer token — usa primero POST /auth/login para obtenerlo."
+    ),
+)
+def update_current_user(
+    profile: UserProfileUpdate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = AuthService.verify_supabase_token(credentials)
+    user = _get_or_build_user(db, payload)
 
+    user.full_name = profile.full_name
+    user.age = profile.age
+    user.phone = profile.phone
+
+    db.commit()
+    db.refresh(user)
+
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        age=user.age,
+        phone=user.phone,
+    )
+
+
+@router.patch(
+    "/me",
+    response_model=UserResponse,
+    summary="Editar parcialmente el perfil (protegido 🔒)",
+    description=(
+        "Actualiza solo los campos incluidos en la petición (nombre, edad y/o teléfono), "
+        "sin tocar el resto. Requiere Bearer token."
+    ),
+)
+def patch_current_user(
+    profile: UserProfilePatch,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
+    payload = AuthService.verify_supabase_token(credentials)
+    user = _get_or_build_user(db, payload)
+
+    updates = profile.model_dump(exclude_unset=True)
+    for field, value in updates.items():
+        setattr(user, field, value)
+
+    db.commit()
+    db.refresh(user)
+
+    return UserResponse(
+        id=str(user.id),
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        age=user.age,
+        phone=user.phone,
+    )
