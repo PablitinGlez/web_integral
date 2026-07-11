@@ -83,6 +83,20 @@ export class AddressService {
     }
   }
 
+  /** Actualiza solo los campos incluidos en `partial`, sin tocar el resto de la dirección. */
+  async patchAddress(id: string, partial: Partial<AddressInput>) {
+    const headers = await this.authHeaders();
+    try {
+      const updated = await firstValueFrom(
+        this.http.patch<Address>(`${this.apiUrl}/${id}`, partial, { headers })
+      );
+      this.addresses.update(list => this.sortAddresses(list.map(a => (a.id === id ? updated : a))));
+      return updated;
+    } catch (err: any) {
+      throw new Error(this.extractError(err, 'No se pudo actualizar la dirección.'));
+    }
+  }
+
   async deleteAddress(id: string, _userId?: string) {
     const headers = await this.authHeaders();
     try {

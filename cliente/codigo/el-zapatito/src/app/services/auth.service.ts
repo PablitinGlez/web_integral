@@ -1,11 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { User } from '@supabase/supabase-js';
 import { supabase } from './supabase-client';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private supabase = supabase;
+  private apiUrl = 'http://localhost:8000/auth';
+  private authReadyPromise: Promise<void>;
+
   currentUser = signal<{
     id: string;
     email: string;
@@ -16,25 +20,21 @@ export class AuthService {
     phone: string | null;
   } | null>(null);
 
-  isInitialized = signal(false);
-  private initCallbacks: (() => void)[] = [];
+  constructor(private router: Router, private http: HttpClient) {
+    this.authReadyPromise = this.init();
+  }
 
-  constructor(private router: Router) {
-    this.init();
+  /** Se resuelve cuando terminó de restaurar (o no) la sesión al arrancar la app.
+   * Úsalo antes de leer currentUser() en código que corre muy temprano (guards, login, checkout). */
+  async waitForAuthInit(): Promise<void> {
+    return this.authReadyPromise;
   }
 
   private async init() {
-    try {
-      // Restore session if exists
-      const { data: { session } } = await this.supabase.auth.getSession();
-      if (session?.user) {
-        await this.loadProfile(session.user);
-      }
-    } catch (e) {
-      console.error('[AUTH] getSession error:', e);
-    } finally {
-      this.isInitialized.set(true);
-      this.resolveInitCallbacks();
+    // Restore session if exists
+    const { data: { session } } = await this.supabase.auth.getSession();
+    if (session?.user) {
+      await this.loadProfile(session.user);
     }
 
     // Listen for auth changes
@@ -45,24 +45,6 @@ export class AuthService {
       } else {
         this.currentUser.set(null);
       }
-      this.isInitialized.set(true);
-      this.resolveInitCallbacks();
-    });
-  }
-
-  private resolveInitCallbacks() {
-    while (this.initCallbacks.length > 0) {
-      const cb = this.initCallbacks.shift();
-      if (cb) cb();
-    }
-  }
-
-  waitForAuthInit(): Promise<void> {
-    if (this.isInitialized()) {
-      return Promise.resolve();
-    }
-    return new Promise((resolve) => {
-      this.initCallbacks.push(resolve);
     });
   }
 
@@ -99,30 +81,31 @@ export class AuthService {
       throw new Error('Ingresa una edad válida.');
     }
 
-    const payload = {
-      id: user.id,
-      email: user.email,
+    const token = await this.getSessionToken();
+    if (!token) {
+      throw new Error('No hay una sesión activa.');
+    }
+    const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+
+    const body = {
       full_name: trimmedName,
-      role: user.role,
       age: profileData.age ?? null,
       phone: profileData.phone?.trim() || null
     };
 
-    // Usamos upsert porque algunos usuarios aún no tienen una fila creada en la tabla "users"
-    const { error } = await this.supabase
-      .from('users')
-      .upsert(payload, { onConflict: 'id' });
+    try {
+      const updated: any = await this.http.put(`${this.apiUrl}/me`, body, { headers }).toPromise();
 
-    if (error) {
-      throw new Error('No se pudo actualizar el perfil: ' + error.message);
+      this.currentUser.set({
+        ...user,
+        fullName: updated.full_name,
+        age: updated.age,
+        phone: updated.phone
+      });
+    } catch (err: any) {
+      const detail = err?.error?.detail || err?.message || 'Error desconocido';
+      throw new Error('No se pudo actualizar el perfil: ' + detail);
     }
-
-    this.currentUser.set({
-      ...user,
-      fullName: trimmedName,
-      age: payload.age,
-      phone: payload.phone
-    });
   }
 
   async register(email: string, password: string, fullName: string) {

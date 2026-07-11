@@ -9,9 +9,8 @@ class User(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), nullable=False, unique=True)
     full_name = Column(String(255))
+    age = Column(Integer)
+    phone = Column(String(30))
     role = Column(String(50), default="user")
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    age = Column(Integer, nullable=True)
-    phone = Column(String(50), nullable=True)
-
