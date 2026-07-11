@@ -5,13 +5,13 @@ from datetime import datetime
 
 
 class AddressBase(BaseModel):
-    label: str = Field(..., min_length=1, max_length=50)
-    street: str = Field(..., min_length=1)
-    city: str = Field(..., min_length=1, max_length=100)
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
-    country: Optional[str] = "México"
-    phone: Optional[str] = None
+    label: str = Field(..., min_length=1, max_length=50, examples=[""])
+    street: str = Field(..., min_length=1, examples=[""])
+    city: str = Field(..., min_length=1, max_length=100, examples=[""])
+    state: Optional[str] = Field(None, examples=[""])
+    zip_code: Optional[str] = Field(None, examples=[""])
+    country: Optional[str] = Field("México", examples=["México"])
+    phone: Optional[str] = Field(None, examples=[""])
 
 
 class AddressCreate(AddressBase):
@@ -23,13 +23,13 @@ class AddressUpdate(AddressBase):
 
 
 class AddressPatch(BaseModel):
-    label: Optional[str] = Field(None, min_length=1, max_length=50)
-    street: Optional[str] = Field(None, min_length=1)
-    city: Optional[str] = Field(None, min_length=1, max_length=100)
-    state: Optional[str] = None
-    zip_code: Optional[str] = None
-    country: Optional[str] = None
-    phone: Optional[str] = None
+    label: Optional[str] = Field(None, min_length=1, max_length=50, examples=[""])
+    street: Optional[str] = Field(None, min_length=1, examples=[""])
+    city: Optional[str] = Field(None, min_length=1, max_length=100, examples=[""])
+    state: Optional[str] = Field(None, examples=[""])
+    zip_code: Optional[str] = Field(None, examples=[""])
+    country: Optional[str] = Field(None, examples=[""])
+    phone: Optional[str] = Field(None, examples=[""])
 
 
 class Address(AddressBase):
