@@ -24,13 +24,13 @@ class User(UserBase):
 
 class UserProfileUpdate(BaseModel):
     """Usado por PUT /auth/me: reemplaza los datos editables del perfil por completo."""
-    full_name: str = Field(..., min_length=1, max_length=255)
-    age: Optional[int] = Field(None, ge=0, le=120)
-    phone: Optional[str] = None
+    full_name: str = Field(..., min_length=1, max_length=255, examples=[""])
+    age: Optional[int] = Field(None, ge=0, le=120, examples=[None])
+    phone: Optional[str] = Field(None, examples=[""])
 
 
 class UserProfilePatch(BaseModel):
     """Usado por PATCH /auth/me: solo actualiza los campos que vienen incluidos."""
-    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
-    age: Optional[int] = Field(None, ge=0, le=120)
-    phone: Optional[str] = None
+    full_name: Optional[str] = Field(None, min_length=1, max_length=255, examples=[""])
+    age: Optional[int] = Field(None, ge=0, le=120, examples=[None])
+    phone: Optional[str] = Field(None, examples=[""])
