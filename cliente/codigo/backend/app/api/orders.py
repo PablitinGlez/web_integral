@@ -9,6 +9,8 @@ from ..models.order import Order, OrderItem
 from ..models.product_variants import Inventory
 from ..schemas import order as order_schema
 from ..services.auth_service import AuthService
+from .coupons import calculate_discounted_total
+from ..models.coupon import Coupon
 
 router = APIRouter(prefix="/orders", tags=["orders"], redirect_slashes=False)
 security = HTTPBearer(auto_error=False)
@@ -62,6 +64,17 @@ def create_order(
     try:
         total = 0
         order_items = []
+        coupon_data = None
+        
+        if order_in.coupon_code:
+            coupon = db.query(Coupon).filter(Coupon.code == order_in.coupon_code.upper()).first()
+            if coupon:
+                coupon_data = {
+                    "discount_type": coupon.discount_type,
+                    "value": coupon.value,
+                }
+            else:
+                raise HTTPException(status_code=404, detail="Cupón no encontrado")
         
         for item in order_in.items:
             # Buscar variante de talla
@@ -98,12 +111,15 @@ def create_order(
                 )
             )
             
+        discounted = calculate_discounted_total(total, coupon_data)
+        final_total = discounted["final_total"]
+
         # Crear orden
         status = "completado" if order_in.paypal_order_id else "pendiente"
         new_order = Order(
             user_id=user_id,
             status=status,
-            total_amount=total,
+            total_amount=final_total,
             shipping_address=order_in.shipping_address,
             paypal_order_id=order_in.paypal_order_id,
             items=order_items

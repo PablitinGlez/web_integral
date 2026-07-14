@@ -1,7 +1,9 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { OrderService } from '../../../services/order.service';
 import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
+import { catchError, delay, retryWhen, take } from 'rxjs/operators';
+import { OrderService } from '../../../services/order.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -150,35 +152,23 @@ import { HttpClient } from '@angular/common/http';
 })
 export class DashboardComponent implements OnInit {
   orderService = inject(OrderService);
-  http = inject(HttpClient);
+  private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   today = new Date();
-
-  metrics = [
-    { label: 'Ventas Totales', value: '$0.00', icon: 'payments', trend: 0, color: '#000000' },
-    { label: 'Pedidos', value: '0', icon: 'shopping_bag', trend: 0, color: '#3b82f6' },
-    { label: 'Visitantes', value: '124', icon: 'visibility', trend: 0, color: '#8b5cf6' },
-    { label: 'Stock Bajo', value: '0 items', icon: 'inventory_2', trend: 0, color: '#f59e0b' }
-  ];
+  metrics: Array<{ label: string; value: string; icon: string; trend: number; color: string }> = [];
 
   recentOrders: any[] = [];
   topProducts: any[] = [];
 
-  ngOnInit() {
-    this.loadDashboardData();
+  ngOnInit(): void {
+    this.loadMetrics();
+    this.loadRecentOrders();
   }
 
-  loadDashboardData() {
-    // 1. Cargar pedidos
+  private loadRecentOrders(): void {
     this.orderService.getOrders().subscribe({
       next: (orders) => {
-        // Calcular Ventas Totales
-        const totalSales = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-        this.metrics[0].value = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalSales);
-        
-        // Calcular Pedidos
-        this.metrics[1].value = orders.length.toString();
-
         // Mapear Ventas Recientes (tomar las últimas 4)
         this.recentOrders = orders.slice(0, 4).map(item => ({
           client: item.user?.full_name || 'Invitado',
@@ -209,21 +199,55 @@ export class DashboardComponent implements OnInit {
           .map(([name, data]) => ({ name, ...data }))
           .sort((a, b) => b.sales - a.sales)
           .slice(0, 3);
+          
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error al cargar pedidos para el Dashboard:', err);
       }
     });
+  }
 
-    // 2. Cargar métricas de inventario (Stock Bajo)
-    this.http.get<any>('http://localhost:8000/metrics/summary').subscribe({
-      next: (summary) => {
-        this.metrics[3].value = `${summary.low_stock_alerts} items`;
-      },
-      error: (err) => {
-        console.error('Error al cargar métricas de inventario:', err);
-      }
-    });
+  private loadMetrics(): void {
+    this.metrics = this.getDefaultMetrics();
+    this.cdr.detectChanges();
+
+    this.http.get<any>('http://localhost:8000/metrics/summary')
+      .pipe(
+        retryWhen(errors => errors.pipe(delay(500), take(3))),
+        catchError(() => {
+          this.metrics = this.getDefaultMetrics();
+          this.cdr.detectChanges();
+          return of(null);
+        })
+      )
+      .subscribe((data) => {
+        if (!data) {
+          return;
+        }
+
+        this.metrics = [
+          { label: 'Productos', value: data.total_products.toString(), icon: 'inventory_2', trend: 0, color: '#3b82f6' },
+          { label: 'Categorías', value: data.total_categories.toString(), icon: 'category', trend: 0, color: '#8b5cf6' },
+          { label: 'Marcas', value: data.total_brands.toString(), icon: 'branding_watermark', trend: 0, color: '#10b981' },
+          { label: 'Disponibles', value: data.available_products.toString(), icon: 'check_circle', trend: 0, color: '#f59e0b' },
+          { label: 'Stock Total', value: data.total_stock.toString(), icon: 'warehouse', trend: 0, color: '#ef4444' },
+          { label: 'Cupones Activos', value: data.active_coupons.toString(), icon: 'discount', trend: 0, color: '#000000' }
+        ];
+        
+        this.cdr.detectChanges();
+      });
+  }
+
+  private getDefaultMetrics() {
+    return [
+      { label: 'Productos', value: '0', icon: 'inventory_2', trend: 0, color: '#3b82f6' },
+      { label: 'Categorías', value: '0', icon: 'category', trend: 0, color: '#8b5cf6' },
+      { label: 'Marcas', value: '0', icon: 'branding_watermark', trend: 0, color: '#10b981' },
+      { label: 'Disponibles', value: '0', icon: 'check_circle', trend: 0, color: '#f59e0b' },
+      { label: 'Stock Total', value: '0', icon: 'warehouse', trend: 0, color: '#ef4444' },
+      { label: 'Cupones Activos', value: '0', icon: 'discount', trend: 0, color: '#000000' }
+    ];
   }
 
   mapToFrontendStatus(status: string): string {

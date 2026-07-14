@@ -244,9 +244,12 @@ import { AddressService, Address, AddressInput } from '../../../services/address
                           <div class="coupon-input-wrapper">
                             <label>Ingresa un código de tarjeta de regalo o de promoción</label>
                             <div class="input-btn-row">
-                              <input type="text" placeholder="Introducir código">
-                              <button class="btn-apply-coupon">Aplicar</button>
+                              <input type="text" [(ngModel)]="couponCode" placeholder="Introducir código">
+                              <button class="btn-apply-coupon" (click)="applyCoupon()">Aplicar</button>
                             </div>
+                            @if (couponMessage) {
+                              <p class="coupon-message" [class.success-message]="couponApplied">{{ couponMessage }}</p>
+                            }
                           </div>
                         </div>
                       </div>
@@ -1515,6 +1518,10 @@ export class CheckoutComponent implements OnInit {
   savingAddress = false;
   addressError = '';
   shippingAddress = '';
+  couponCode = '';
+  couponMessage = '';
+  couponApplied: any = null;
+  discountAmount = 0;
 
   addressForm: AddressInput = {
     label: '',
@@ -1603,6 +1610,32 @@ export class CheckoutComponent implements OnInit {
     }
   }
 
+  applyCoupon() {
+    const subtotal = this.cart.cartTotal();
+    if (!this.couponCode.trim()) {
+      this.couponMessage = 'Ingresa un código de cupón.';
+      this.couponApplied = null;
+      return;
+    }
+
+    this.orderService.validateCoupon(this.couponCode.trim(), subtotal).subscribe({
+      next: (res) => {
+        this.couponApplied = res.coupon;
+        this.discountAmount = res.discount_amount;
+        this.couponMessage = `${res.coupon.name} aplicado correctamente.`;
+      },
+      error: (err) => {
+        this.couponApplied = null;
+        this.discountAmount = 0;
+        this.couponMessage = err?.error?.detail || 'No se pudo aplicar el cupón.';
+      }
+    });
+  }
+
+  getDiscountedTotal() {
+    return Math.max(0, this.cart.cartTotal() - this.discountAmount);
+  }
+
   initPaypalButtons() {
     const container = document.getElementById('paypal-button-container');
     if (!container) return;
@@ -1626,7 +1659,7 @@ export class CheckoutComponent implements OnInit {
                 purchase_units: [{
                   amount: {
                     currency_code: 'USD',
-                    value: this.cart.cartTotal().toFixed(2)
+                    value: this.getDiscountedTotal().toFixed(2)
                   }
                 }]
               });
@@ -1687,7 +1720,8 @@ export class CheckoutComponent implements OnInit {
         size: item.size,
         quantity: item.quantity,
         unit_price: item.unit_price
-      }))
+      })),
+      coupon_code: this.couponApplied?.code || null
     };
 
     this.orderService.createOrder(orderData).subscribe({
