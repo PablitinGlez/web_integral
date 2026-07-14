@@ -75,7 +75,16 @@ import { OrderService } from '../../../services/order.service';
                   </select>
                 </td>
               </tr>
-              <tr *ngIf="filteredOrders.length === 0">
+              <!-- Estado de carga -->
+              <tr *ngIf="loading">
+                <td colspan="7" class="loading-state">
+                  <div class="spinner"></div>
+                  <p>Cargando pedidos de la base de datos...</p>
+                </td>
+              </tr>
+
+              <!-- Estado vacío -->
+              <tr *ngIf="!loading && filteredOrders.length === 0">
                 <td colspan="7" class="empty-state">
                   <span class="material-icons">receipt_long</span>
                   <p>No hay pedidos registrados por el momento.</p>
@@ -138,6 +147,11 @@ import { OrderService } from '../../../services/order.service';
     .empty-state { text-align: center; padding: 4rem 2rem; color: #aaa; }
     .empty-state .material-icons { font-size: 3rem; margin-bottom: 1rem; color: #ddd; display: block; }
     .empty-state p { margin: 0; }
+
+    /* Estados de Carga */
+    .loading-state { text-align: center; padding: 4rem 2rem; color: #888; }
+    .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #000; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   `]
 })
 export class OrdersComponent implements OnInit {
@@ -150,12 +164,14 @@ export class OrdersComponent implements OnInit {
 
   orders: any[] = [];
   filteredOrders: any[] = [];
+  loading = true;
 
   ngOnInit() {
     this.loadOrders();
   }
 
   loadOrders() {
+    this.loading = true;
     console.log('[DEBUG] loadOrders: Calling getOrders()...');
     this.orderService.getOrders().subscribe({
       next: (data) => {
@@ -178,9 +194,12 @@ export class OrdersComponent implements OnInit {
           this.applyFilters();
         } catch (mapErr) {
           console.error('[DEBUG] loadOrders mapping exception:', mapErr);
+        } finally {
+          this.loading = false;
         }
       },
       error: (err) => {
+        this.loading = false;
         console.error('Error al cargar pedidos de la base de datos:', err);
       }
     });
