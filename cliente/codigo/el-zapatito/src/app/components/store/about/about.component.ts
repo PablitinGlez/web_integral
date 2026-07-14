@@ -475,7 +475,7 @@ export class AboutComponent {
       avatar: 'https://i.pravatar.cc/150?img=11'
     },
     {
-      name: 'Said',
+      name: 'Zahid',
       role: 'Trabajador',
       avatar: 'https://i.pravatar.cc/150?img=52'
     },
