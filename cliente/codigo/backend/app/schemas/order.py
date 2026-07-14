@@ -32,6 +32,7 @@ class OrderBase(BaseModel):
 class OrderCreate(BaseModel):
     shipping_address: Optional[str] = None
     paypal_order_id: Optional[str] = None
+    coupon_code: Optional[str] = None
     items: List[OrderItemCreate]
 
 class OrderResponse(OrderBase):

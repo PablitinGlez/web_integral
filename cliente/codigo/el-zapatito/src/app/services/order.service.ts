@@ -61,6 +61,10 @@ export class OrderService {
     );
   }
 
+  validateCoupon(code: string, subtotal: number): Observable<any> {
+    return this.http.get<any>(`http://localhost:8000/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}`);
+  }
+
   getPaypalConfig(): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/config/paypal`);
   }
