@@ -11,6 +11,7 @@ from ..models import brand as brand_model
 from ..models import product_variants as variants_model
 from ..schemas import product as product_schema
 from ..services.cloudinary_service import CloudinaryService
+from ..services.auth_service import AuthService
 
 VALID_GENDERS = {"Hombre", "Mujer", "Niño", "Unisex"}
 
@@ -78,7 +79,8 @@ async def create_product(
     sku: Optional[str] = Form(default=None, description="Código SKU único (Opcional. Si pones uno, debe ser único)"),
     is_active: bool = Form(default=True, description="¿Producto activo?"),
     files: List[UploadFile] = File(..., description="Imágenes del producto (mínimo 1)"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    token: dict = Depends(AuthService.verify_supabase_token)
 ):
     if not files:
         raise HTTPException(status_code=400, detail="Se requiere al menos una imagen")
@@ -197,7 +199,7 @@ async def create_product(
     return new_product
 
 @router.delete("/{product_id}")
-def delete_product(product_id: str, db: Session = Depends(get_db)):
+def delete_product(product_id: str, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     # Validar que el ID sea un UUID válido
     try:
         UUID(product_id)
@@ -221,7 +223,7 @@ def delete_product(product_id: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/{product_id}", response_model=product_schema.Product)
-def patch_product(product_id: str, product_update: product_schema.ProductUpdate, db: Session = Depends(get_db)):
+def patch_product(product_id: str, product_update: product_schema.ProductUpdate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     # Validar que el ID sea un UUID válido
     try:
         UUID(product_id)

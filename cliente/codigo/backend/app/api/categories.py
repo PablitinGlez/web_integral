@@ -4,6 +4,7 @@ from typing import List
 from ..database import get_db
 from ..models import category as cat_model
 from ..schemas import category as cat_schema
+from ..services.auth_service import AuthService
 
 router = APIRouter(prefix="/categories", tags=["categories"])
 
@@ -13,7 +14,7 @@ def get_categories(db: Session = Depends(get_db)):
     return db.query(cat_model.Category).order_by(cat_model.Category.created_at.desc()).all()
 
 @router.post("/", response_model=cat_schema.Category)
-def create_category(category: cat_schema.CategoryCreate, db: Session = Depends(get_db)):
+def create_category(category: cat_schema.CategoryCreate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_cat = cat_model.Category(name=category.name, description=category.description, is_active=category.is_active)
     db.add(db_cat)
     db.commit()
@@ -21,7 +22,7 @@ def create_category(category: cat_schema.CategoryCreate, db: Session = Depends(g
     return db_cat
 
 @router.put("/{category_id}", response_model=cat_schema.Category)
-def update_category(category_id: str, category: cat_schema.CategoryUpdate, db: Session = Depends(get_db)):
+def update_category(category_id: str, category: cat_schema.CategoryUpdate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_cat = db.query(cat_model.Category).filter(cat_model.Category.id == category_id).first()
     if not db_cat:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -35,7 +36,7 @@ def update_category(category_id: str, category: cat_schema.CategoryUpdate, db: S
     return db_cat
 
 @router.patch("/{category_id}", response_model=cat_schema.Category)
-def patch_category(category_id: str, category: cat_schema.CategoryUpdate, db: Session = Depends(get_db)):
+def patch_category(category_id: str, category: cat_schema.CategoryUpdate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_cat = db.query(cat_model.Category).filter(cat_model.Category.id == category_id).first()
     if not db_cat:
         raise HTTPException(status_code=404, detail="Category not found")
@@ -49,7 +50,7 @@ def patch_category(category_id: str, category: cat_schema.CategoryUpdate, db: Se
     return db_cat
 
 @router.delete("/{category_id}", response_model=cat_schema.Category)
-def deactivate_category(category_id: str, db: Session = Depends(get_db)):
+def deactivate_category(category_id: str, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     # Soft delete (Desactivar)
     db_cat = db.query(cat_model.Category).filter(cat_model.Category.id == category_id).first()
     if not db_cat:
