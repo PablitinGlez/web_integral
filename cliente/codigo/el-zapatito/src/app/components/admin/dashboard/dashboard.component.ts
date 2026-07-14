@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { OrderService } from '../../../services/order.service';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-dashboard',
@@ -146,26 +148,89 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit {
+  orderService = inject(OrderService);
+  http = inject(HttpClient);
+
   today = new Date();
 
   metrics = [
-    { label: 'Ventas Totales', value: '$24,580', icon: 'payments', trend: 12.5, color: '#000000' },
-    { label: 'Pedidos', value: '1,240', icon: 'shopping_bag', trend: 8.2, color: '#3b82f6' },
-    { label: 'Visitantes', value: '18.4k', icon: 'visibility', trend: -3.4, color: '#8b5cf6' },
-    { label: 'Stock Bajo', value: '12 items', icon: 'inventory_2', trend: 0, color: '#f59e0b' }
+    { label: 'Ventas Totales', value: '$0.00', icon: 'payments', trend: 0, color: '#000000' },
+    { label: 'Pedidos', value: '0', icon: 'shopping_bag', trend: 0, color: '#3b82f6' },
+    { label: 'Visitantes', value: '124', icon: 'visibility', trend: 0, color: '#8b5cf6' },
+    { label: 'Stock Bajo', value: '0 items', icon: 'inventory_2', trend: 0, color: '#f59e0b' }
   ];
 
-  recentOrders = [
-    { client: 'Juan Pérez', product: 'Nike Air Max', date: '21 May, 2026', total: 189.99, status: 'Completado' },
-    { client: 'María García', product: 'Jordan Retro', date: '21 May, 2026', total: 210.00, status: 'Pendiente' },
-    { client: 'Carlos Ruiz', product: 'Yeezy 350', date: '20 May, 2026', total: 220.00, status: 'Completado' },
-    { client: 'Ana López', product: 'Adidas Ultra', date: '20 May, 2026', total: 160.00, status: 'Cancelado' }
-  ];
+  recentOrders: any[] = [];
+  topProducts: any[] = [];
 
-  topProducts = [
-    { name: 'Nike Air Max Minimal', sales: 450, revenue: 85495, img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=100' },
-    { name: 'Jordan Retro High', sales: 320, revenue: 67200, img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=100' },
-    { name: 'Yeezy Boost 350', sales: 280, revenue: 61600, img: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=100' }
-  ];
+  ngOnInit() {
+    this.loadDashboardData();
+  }
+
+  loadDashboardData() {
+    // 1. Cargar pedidos
+    this.orderService.getOrders().subscribe({
+      next: (orders) => {
+        // Calcular Ventas Totales
+        const totalSales = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+        this.metrics[0].value = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(totalSales);
+        
+        // Calcular Pedidos
+        this.metrics[1].value = orders.length.toString();
+
+        // Mapear Ventas Recientes (tomar las últimas 4)
+        this.recentOrders = orders.slice(0, 4).map(item => ({
+          client: item.user?.full_name || 'Invitado',
+          product: item.items.map((i: any) => `${i.product?.name || 'Zapato'} (${i.size})`).join(', '),
+          date: new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }),
+          total: Number(item.total_amount),
+          status: this.mapToFrontendStatus(item.status)
+        }));
+
+        // Calcular los productos más vendidos
+        const productSales: { [name: string]: { sales: number; revenue: number; img: string } } = {};
+        orders.forEach(o => {
+          o.items.forEach((i: any) => {
+            const name = i.product?.name || 'Zapato';
+            if (!productSales[name]) {
+              productSales[name] = {
+                sales: 0,
+                revenue: 0,
+                img: i.product?.main_image_url || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=100'
+              };
+            }
+            productSales[name].sales += i.quantity;
+            productSales[name].revenue += Number(i.unit_price) * i.quantity;
+          });
+        });
+
+        this.topProducts = Object.entries(productSales)
+          .map(([name, data]) => ({ name, ...data }))
+          .sort((a, b) => b.sales - a.sales)
+          .slice(0, 3);
+      },
+      error: (err) => {
+        console.error('Error al cargar pedidos para el Dashboard:', err);
+      }
+    });
+
+    // 2. Cargar métricas de inventario (Stock Bajo)
+    this.http.get<any>('http://localhost:8000/metrics/summary').subscribe({
+      next: (summary) => {
+        this.metrics[3].value = `${summary.low_stock_alerts} items`;
+      },
+      error: (err) => {
+        console.error('Error al cargar métricas de inventario:', err);
+      }
+    });
+  }
+
+  mapToFrontendStatus(status: string): string {
+    const s = status.toLowerCase();
+    if (s === 'pendiente' || s === 'pending') return 'Pendiente';
+    if (s === 'completado' || s === 'completed') return 'Completado';
+    if (s === 'cancelado' || s === 'cancelled') return 'Cancelado';
+    return status;
+  }
 }

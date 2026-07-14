@@ -156,19 +156,29 @@ export class OrdersComponent implements OnInit {
   }
 
   loadOrders() {
+    console.log('[DEBUG] loadOrders: Calling getOrders()...');
     this.orderService.getOrders().subscribe({
       next: (data) => {
-        this.orders = data.map(item => ({
-          realId: item.id,
-          id: '#' + item.id.substring(0, 8).toUpperCase(),
-          client: item.user?.full_name || 'Invitado',
-          email: item.user?.email || 'N/A',
-          product: item.items.map((i: any) => `${i.product?.name || 'Zapato'} (${i.size}) x${i.quantity}`).join(', '),
-          date: new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
-          total: Number(item.total_amount),
-          status: this.mapToFrontendStatus(item.status)
-        }));
-        this.applyFilters();
+        console.log('[DEBUG] loadOrders: Received data:', data);
+        try {
+          this.orders = data.map(item => {
+            console.log('[DEBUG] Mapping order item:', item);
+            return {
+              realId: item.id,
+              id: '#' + item.id.substring(0, 8).toUpperCase(),
+              client: item.user?.full_name || 'Invitado',
+              email: item.user?.email || 'N/A',
+              product: item.items.map((i: any) => `${i.product?.name || 'Zapato'} (${i.size}) x${i.quantity}`).join(', '),
+              date: new Date(item.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+              total: Number(item.total_amount),
+              status: this.mapToFrontendStatus(item.status)
+            };
+          });
+          console.log('[DEBUG] loadOrders: Mapped orders successfully:', this.orders);
+          this.applyFilters();
+        } catch (mapErr) {
+          console.error('[DEBUG] loadOrders mapping exception:', mapErr);
+        }
       },
       error: (err) => {
         console.error('Error al cargar pedidos de la base de datos:', err);

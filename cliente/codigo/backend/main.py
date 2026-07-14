@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.api import products, auth, categories, brands, inventory, metrics, addresses
+from app.api import products, auth, categories, brands, inventory, metrics, addresses, orders
 
 # Importar modelos para que SQLAlchemy los reconozca al crear las tablas
-from app.models import product, category, brand, user, product_variants, address #, order
+from app.models import product, category, brand, user, product_variants, address, order
 
 # Crear tablas si no existen
 Base.metadata.create_all(bind=engine)
@@ -37,6 +37,7 @@ app.include_router(brands.router)
 app.include_router(inventory.router)
 app.include_router(metrics.router)
 app.include_router(addresses.router)
+app.include_router(orders.router)
 
 @app.get("/")
 def read_root():
