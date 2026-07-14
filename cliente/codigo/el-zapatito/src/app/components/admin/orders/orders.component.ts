@@ -79,7 +79,7 @@ import { OrderService } from '../../../services/order.service';
               <tr *ngIf="loading">
                 <td colspan="7" class="loading-state">
                   <div class="spinner"></div>
-                  <p>Cargando pedidos de la base de datos...</p>
+                  <p>Cargando pedidos...</p>
                 </td>
               </tr>
 
