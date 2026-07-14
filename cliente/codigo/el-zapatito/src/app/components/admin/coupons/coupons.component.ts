@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -102,8 +102,9 @@ import { catchError, delay, finalize, retryWhen, take } from 'rxjs/operators';
     .empty-state { color: #777; margin: 0; }
   `]
 })
-export class CouponsComponent implements OnInit, AfterViewInit {
+export class CouponsComponent implements OnInit {
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   coupons: any[] = [];
   creatingCoupon = false;
@@ -121,19 +122,17 @@ export class CouponsComponent implements OnInit, AfterViewInit {
     this.loadCoupons();
   }
 
-  ngAfterViewInit(): void {
-    setTimeout(() => this.loadCoupons(), 0);
-  }
-
   createCoupon(): void {
     if (!this.newCoupon.name?.trim()) {
       this.formMessage = 'Ingresa un nombre para el cupón.';
+      this.cdr.detectChanges();
       return;
     }
 
     const percentage = Number(this.newCoupon.percentage || 0);
     if (percentage <= 0 || percentage > 100) {
       this.formMessage = 'El porcentaje debe estar entre 1 y 100.';
+      this.cdr.detectChanges();
       return;
     }
 
@@ -153,17 +152,23 @@ export class CouponsComponent implements OnInit, AfterViewInit {
 
     this.creatingCoupon = true;
     this.formMessage = '';
+    this.cdr.detectChanges();
 
     this.http.post('http://localhost:8000/coupons/', payload)
-      .pipe(finalize(() => this.creatingCoupon = false))
+      .pipe(finalize(() => {
+        this.creatingCoupon = false;
+        this.cdr.detectChanges();
+      }))
       .subscribe({
         next: () => {
           this.formMessage = 'Cupón creado correctamente.';
           this.newCoupon = { name: '', code: '', percentage: 10, min_purchase: 100, start_date: '', end_date: '' };
           this.loadCoupons();
+          this.cdr.detectChanges();
         },
         error: (err) => {
           this.formMessage = err?.error?.detail || 'No se pudo crear el cupón.';
+          this.cdr.detectChanges();
         }
       });
   }
@@ -174,11 +179,13 @@ export class CouponsComponent implements OnInit, AfterViewInit {
         retryWhen(errors => errors.pipe(delay(500), take(3))),
         catchError(() => {
           this.coupons = [];
+          this.cdr.detectChanges();
           return of([]);
         })
       )
       .subscribe((data) => {
         this.coupons = (data || []).filter((coupon: any) => coupon.is_active);
+        this.cdr.detectChanges();
       });
   }
 }

@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { of } from 'rxjs';
@@ -150,9 +150,10 @@ import { OrderService } from '../../../services/order.service';
     }
   `]
 })
-export class DashboardComponent implements OnInit, AfterViewInit {
+export class DashboardComponent implements OnInit {
   orderService = inject(OrderService);
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   today = new Date();
   metrics: Array<{ label: string; value: string; icon: string; trend: number; color: string }> = [];
@@ -163,10 +164,6 @@ export class DashboardComponent implements OnInit, AfterViewInit {
   ngOnInit(): void {
     this.loadMetrics();
     this.loadRecentOrders();
-  }
-
-  ngAfterViewInit(): void {
-    setTimeout(() => this.loadMetrics(), 0);
   }
 
   private loadRecentOrders(): void {
@@ -202,6 +199,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           .map(([name, data]) => ({ name, ...data }))
           .sort((a, b) => b.sales - a.sales)
           .slice(0, 3);
+          
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Error al cargar pedidos para el Dashboard:', err);
@@ -211,12 +210,14 @@ export class DashboardComponent implements OnInit, AfterViewInit {
 
   private loadMetrics(): void {
     this.metrics = this.getDefaultMetrics();
+    this.cdr.detectChanges();
 
     this.http.get<any>('http://localhost:8000/metrics/summary')
       .pipe(
         retryWhen(errors => errors.pipe(delay(500), take(3))),
         catchError(() => {
           this.metrics = this.getDefaultMetrics();
+          this.cdr.detectChanges();
           return of(null);
         })
       )
@@ -233,6 +234,8 @@ export class DashboardComponent implements OnInit, AfterViewInit {
           { label: 'Stock Total', value: data.total_stock.toString(), icon: 'warehouse', trend: 0, color: '#ef4444' },
           { label: 'Cupones Activos', value: data.active_coupons.toString(), icon: 'discount', trend: 0, color: '#000000' }
         ];
+        
+        this.cdr.detectChanges();
       });
   }
 
