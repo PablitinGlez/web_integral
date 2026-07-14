@@ -31,6 +31,9 @@ import { CommonModule } from '@angular/common';
             <a routerLink="/admin/brands" routerLinkActive="active">
               <span class="material-icons">sell</span> Marcas
             </a>
+            <a routerLink="/admin/coupons" routerLinkActive="active">
+              <span class="material-icons">discount</span> Cupones
+            </a>
             <a routerLink="/admin/products" routerLinkActive="active">
               <span class="material-icons">style</span> Productos
             </a>

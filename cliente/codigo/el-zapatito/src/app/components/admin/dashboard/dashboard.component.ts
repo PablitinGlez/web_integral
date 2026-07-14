@@ -1,5 +1,8 @@
-import { Component } from '@angular/core';
+import { AfterViewInit, Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
+import { catchError, delay, retryWhen, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-dashboard',
@@ -146,15 +149,11 @@ import { CommonModule } from '@angular/common';
     }
   `]
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit, AfterViewInit {
   today = new Date();
+  private http = inject(HttpClient);
 
-  metrics = [
-    { label: 'Ventas Totales', value: '$24,580', icon: 'payments', trend: 12.5, color: '#000000' },
-    { label: 'Pedidos', value: '1,240', icon: 'shopping_bag', trend: 8.2, color: '#3b82f6' },
-    { label: 'Visitantes', value: '18.4k', icon: 'visibility', trend: -3.4, color: '#8b5cf6' },
-    { label: 'Stock Bajo', value: '12 items', icon: 'inventory_2', trend: 0, color: '#f59e0b' }
-  ];
+  metrics: Array<{ label: string; value: string; icon: string; trend: number; color: string }> = [];
 
   recentOrders = [
     { client: 'Juan Pérez', product: 'Nike Air Max', date: '21 May, 2026', total: 189.99, status: 'Completado' },
@@ -168,4 +167,51 @@ export class DashboardComponent {
     { name: 'Jordan Retro High', sales: 320, revenue: 67200, img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=100' },
     { name: 'Yeezy Boost 350', sales: 280, revenue: 61600, img: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=100' }
   ];
+
+  ngOnInit(): void {
+    this.loadMetrics();
+  }
+
+  ngAfterViewInit(): void {
+    setTimeout(() => this.loadMetrics(), 0);
+  }
+
+  private loadMetrics(): void {
+    this.metrics = this.getDefaultMetrics();
+
+    this.http.get<any>('http://localhost:8000/metrics/summary')
+      .pipe(
+        retryWhen(errors => errors.pipe(delay(500), take(3))),
+        catchError(() => {
+          this.metrics = this.getDefaultMetrics();
+          return of(null);
+        })
+      )
+      .subscribe((data) => {
+        if (!data) {
+          return;
+        }
+
+        this.metrics = [
+          { label: 'Productos', value: data.total_products.toString(), icon: 'inventory_2', trend: 0, color: '#3b82f6' },
+          { label: 'Categorías', value: data.total_categories.toString(), icon: 'category', trend: 0, color: '#8b5cf6' },
+          { label: 'Marcas', value: data.total_brands.toString(), icon: 'branding_watermark', trend: 0, color: '#10b981' },
+          { label: 'Disponibles', value: data.available_products.toString(), icon: 'check_circle', trend: 0, color: '#f59e0b' },
+          { label: 'Stock Total', value: data.total_stock.toString(), icon: 'warehouse', trend: 0, color: '#ef4444' },
+          { label: 'Cupones Activos', value: data.active_coupons.toString(), icon: 'discount', trend: 0, color: '#000000' }
+        ];
+      });
+  }
+
+  private getDefaultMetrics() {
+    return [
+      { label: 'Productos', value: '0', icon: 'inventory_2', trend: 0, color: '#3b82f6' },
+      { label: 'Categorías', value: '0', icon: 'category', trend: 0, color: '#8b5cf6' },
+      { label: 'Marcas', value: '0', icon: 'branding_watermark', trend: 0, color: '#10b981' },
+      { label: 'Disponibles', value: '0', icon: 'check_circle', trend: 0, color: '#f59e0b' },
+      { label: 'Stock Total', value: '0', icon: 'warehouse', trend: 0, color: '#ef4444' },
+      { label: 'Cupones Activos', value: '0', icon: 'discount', trend: 0, color: '#000000' }
+    ];
+  }
+
 }
