@@ -23,7 +23,11 @@ app = FastAPI(title="El Zapatito API")
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],
+    allow_origins=[
+        "http://localhost:4200", 
+        "https://web-integral.vercel.app",
+        "https://web-integral-wheat.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
