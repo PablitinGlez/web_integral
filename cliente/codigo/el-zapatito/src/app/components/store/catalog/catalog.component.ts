@@ -10,41 +10,158 @@ import { CartService } from '../../../services/cart.service';
   imports: [CommonModule],
   template: `
     <div class="catalog-page">
-      <!-- Header / Sidebar Toggle -->
+      <!-- Header Section -->
       <header class="catalog-header">
-        <h1>Catálogo General</h1>
-        <div class="catalog-controls">
-          <p class="results-count">{{ products().length }} Productos encontrados</p>
-          <select class="sort-select" (change)="sortProducts($event)">
-            <option value="relevance">Relevancia</option>
-            <option value="price-asc">Precio: Menor a Mayor</option>
-            <option value="price-desc">Precio: Mayor a Menor</option>
-          </select>
+        <div class="header-top">
+          <h1>Tenis y Calzado ({{ filteredProducts().length }})</h1>
+          <div class="header-actions">
+            <button class="btn-toggle-filters" (click)="toggleSidebar()">
+              {{ showSidebar() ? 'Ocultar filtros' : 'Mostrar filtros' }}
+              <span class="material-icons">tune</span>
+            </button>
+            <div class="sort-container">
+              <span>Ordenar por:</span>
+              <select class="sort-select" (change)="sortProducts($event)">
+                <option value="relevance">Relevancia</option>
+                <option value="price-asc">Precio: Menor a Mayor</option>
+                <option value="price-desc">Precio: Mayor a Menor</option>
+              </select>
+            </div>
+          </div>
         </div>
+
+        <!-- Horizontal Filter Bar (Mobile/Tablets or optional) -->
+        <div class="horizontal-filters">
+          <button class="filter-pill" [class.active]="totalActiveFilters() > 0">
+            Filtros {{ totalActiveFilters() > 0 ? '(' + totalActiveFilters() + ')' : '' }}
+          </button>
+          <div class="dropdown-filter">
+            <button class="filter-pill">Género <span class="material-icons">expand_more</span></button>
+          </div>
+          <div class="dropdown-filter">
+            <button class="filter-pill">Marca <span class="material-icons">expand_more</span></button>
+          </div>
+          <div class="dropdown-filter">
+            <button class="filter-pill">Talla <span class="material-icons">expand_more</span></button>
+          </div>
+          <div class="dropdown-filter">
+            <button class="filter-pill">Color <span class="material-icons">expand_more</span></button>
+          </div>
+          <div class="dropdown-filter">
+            <button class="filter-pill">Comprar por precio <span class="material-icons">expand_more</span></button>
+          </div>
+        </div>
+
+        <!-- Compra por categorías (as seen in image) -->
+        <section class="shop-by-category">
+          <h2>COMPRA POR CATEGORÍAS</h2>
+          <div class="category-scroll">
+            <div class="category-card" *ngFor="let cat of shopCategories">
+              <div class="cat-img-wrapper">
+                <img [src]="cat.img" [alt]="cat.name">
+              </div>
+              <span>{{ cat.name }}</span>
+            </div>
+          </div>
+        </section>
       </header>
 
-      <div class="catalog-layout">
+      <div class="catalog-layout" [class.sidebar-hidden]="!showSidebar()">
         <!-- Sidebar Filters -->
-        <aside class="sidebar">
-          <div class="filter-group">
-            <h3>Categorías</h3>
-            <ul>
-              <li class="active">Todos los productos</li>
-              <li>Running</li>
-              <li>Casual / Lifestyle</li>
-              <li>Formal</li>
-              <li>Training</li>
-            </ul>
-          </div>
+        <aside class="sidebar" *ngIf="showSidebar()">
+          <div class="sidebar-scrollable">
+            <div class="filter-group">
+              <ul class="category-list">
+                <li class="active">Todos los productos</li>
+                <li>Jordan 1</li>
+                <li>Jordan 4</li>
+                <li>Jordan Spizike</li>
+                <li>Jordan Flight Court</li>
+                <li>Jordan Session</li>
+                <li>Luka Doncic</li>
+                <li>Jayson Tatum</li>
+                <li>Básquetbol</li>
+                <li>Fútbol americano</li>
+                <li>Golf</li>
+                <li>Sandalias y chanclas</li>
+              </ul>
+            </div>
 
-          <div class="filter-group">
-            <h3>Marcas</h3>
-            <div class="brand-list">
-              <label class="check-container" *ngFor="let b of brands">
-                {{ b }}
-                <input type="checkbox" [checked]="selectedBrands.has(b)" (change)="toggleBrandFilter(b)">
-                <span class="checkmark"></span>
-              </label>
+            <hr class="sidebar-divider">
+
+            <!-- Género -->
+            <div class="filter-group">
+              <h3>Género</h3>
+              <div class="check-list">
+                <label class="check-container" *ngFor="let g of genders">
+                  {{ g }}
+                  <input type="checkbox" [checked]="selectedGenders.has(g)" (change)="toggleGenderFilter(g)">
+                  <span class="checkmark"></span>
+                </label>
+              </div>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <!-- Marcas -->
+            <div class="filter-group">
+              <h3>Marca</h3>
+              <div class="check-list">
+                <label class="check-container" *ngFor="let b of brands">
+                  {{ b }}
+                  <input type="checkbox" [checked]="selectedBrands.has(b)" (change)="toggleBrandFilter(b)">
+                  <span class="checkmark"></span>
+                </label>
+              </div>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <!-- Colores -->
+            <div class="filter-group">
+              <h3>Color</h3>
+              <div class="color-grid">
+                <div
+                  class="color-item"
+                  *ngFor="let c of colors"
+                  (click)="toggleColorFilter(c.name)"
+                  [class.active]="selectedColors.has(c.name)">
+                  <div class="color-circle" [style.background-color]="c.hex">
+                    <span class="material-icons" *ngIf="selectedColors.has(c.name)">check</span>
+                  </div>
+                  <span>{{ c.name }}</span>
+                </div>
+              </div>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <!-- Tallas -->
+            <div class="filter-group">
+              <h3>Talla</h3>
+              <div class="size-filter-grid">
+                <button
+                  *ngFor="let s of availableSizes"
+                  class="size-filter-btn"
+                  [class.active]="selectedSizes.has(s)"
+                  (click)="toggleSizeFilter(s)">
+                  {{ s }}
+                </button>
+              </div>
+            </div>
+
+            <hr class="sidebar-divider">
+
+            <!-- Precio -->
+            <div class="filter-group">
+              <h3>Comprar por precio</h3>
+              <div class="check-list">
+                <label class="check-container" *ngFor="let r of priceRanges">
+                  {{ r.label }}
+                  <input type="checkbox" [checked]="selectedPriceRanges.has(r)" (change)="togglePriceRangeFilter(r)">
+                  <span class="checkmark"></span>
+                </label>
+              </div>
             </div>
           </div>
         </aside>
@@ -98,7 +215,7 @@ import { CartService } from '../../../services/cart.service';
           <button class="modal-close-btn" (click)="closeProductDetails()">
             <span class="material-icons">close</span>
           </button>
-          
+
           <div class="modal-grid">
             <!-- Imagen izquierda -->
             <div class="modal-image-column">
@@ -115,7 +232,7 @@ import { CartService } from '../../../services/cart.service';
                   {{ selectedProduct.base_price | currency:'USD' }}
                 </span>
               </div>
-              
+
               <hr class="divider">
 
               <p class="modal-description">
@@ -126,7 +243,7 @@ import { CartService } from '../../../services/cart.service';
               <div class="size-selection-section">
                 <h3>Selecciona una Talla (US)</h3>
                 <div class="modal-sizes-grid">
-                  <button 
+                  <button
                     *ngFor="let variant of getProductVariants(selectedProduct)"
                     [class.selected]="selectedSize === variant.size"
                     [class.out-of-stock]="variant.stock_quantity <= 0"
@@ -149,8 +266,8 @@ import { CartService } from '../../../services/cart.service';
                   <button (click)="changeQty(1)">+</button>
                 </div>
 
-                <button 
-                  class="btn-add-to-cart" 
+                <button
+                  class="btn-add-to-cart"
                   [disabled]="!selectedSize"
                   (click)="addProductToCart()">
                   {{ selectedSize ? 'Agregar a la Bolsa' : 'Selecciona una Talla' }}
@@ -175,57 +292,92 @@ import { CartService } from '../../../services/cart.service';
     }
   `,
   styles: [`
-    .catalog-page { padding: 2rem 0; }
-    
+    .catalog-page { padding: 1rem 3rem; max-width: 1600px; margin: 0 auto; }
+
     /* Header */
-    .catalog-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 3rem; border-bottom: 1px solid #eee; padding-bottom: 2rem; }
-    h1 { font-size: 3rem; letter-spacing: -2px; margin: 0; }
-    .catalog-controls { display: flex; align-items: center; gap: 2rem; }
-    .results-count { color: #888; font-size: 0.9rem; margin: 0; }
-    .sort-select { border: 1px solid #eee; border-radius: 8px; font-weight: 600; outline: none; background: #fff; cursor: pointer; padding: 0.5rem 1rem; }
+    .catalog-header { margin-bottom: 2rem; }
+    .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 500; margin: 0; }
+    .header-actions { display: flex; align-items: center; gap: 2rem; }
+    .btn-toggle-filters { background: none; border: none; display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; cursor: pointer; padding: 0.5rem; }
+    .btn-toggle-filters:hover { opacity: 0.7; }
+    .sort-container { display: flex; align-items: center; gap: 0.5rem; }
+    .sort-container span { font-size: 1rem; }
+    .sort-select { border: none; font-size: 1rem; font-weight: 500; outline: none; background: #fff; cursor: pointer; padding: 0.5rem; }
+
+    .horizontal-filters { display: flex; gap: 0.5rem; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 0.8rem 0; overflow-x: auto; scrollbar-width: none; }
+    .horizontal-filters::-webkit-scrollbar { display: none; }
+    .filter-pill { background: #fff; border: 1px solid #e5e5e5; border-radius: 20px; padding: 0.5rem 1.2rem; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+    .filter-pill:hover { border-color: #000; }
+    .filter-pill.active { border-color: #000; background: #f5f5f5; }
+
+    /* Shop by Category */
+    .shop-by-category { margin-top: 3rem; text-align: center; }
+    .shop-by-category h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 2rem; letter-spacing: 1px; }
+    .category-scroll { display: flex; gap: 2rem; overflow-x: auto; padding-bottom: 1rem; scrollbar-width: none; justify-content: center; }
+    .category-scroll::-webkit-scrollbar { display: none; }
+    .category-card { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; cursor: pointer; min-width: 120px; }
+    .cat-img-wrapper { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
+    .cat-img-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .category-card span { font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
 
     /* Layout */
-    .catalog-layout { display: grid; grid-template-columns: 250px 1fr; gap: 4rem; }
+    .catalog-layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; transition: all 0.3s; }
+    .catalog-layout.sidebar-hidden { grid-template-columns: 1fr; }
 
     /* Sidebar Filters */
-    .sidebar { display: flex; flex-direction: column; gap: 3rem; }
-    .filter-group h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem; color: #999; }
-    .filter-group ul { list-style: none; padding: 0; margin: 0; }
-    .filter-group li { padding: 0.5rem 0; cursor: pointer; color: #555; transition: color 0.3s; font-weight: 500; }
-    .filter-group li:hover, .filter-group li.active { color: #000; }
-    
-    .brand-list { display: flex; flex-direction: column; gap: 0.5rem; }
-    .check-container { display: block; position: relative; padding-left: 30px; margin-bottom: 12px; cursor: pointer; font-size: 0.95rem; user-select: none; }
+    .sidebar { position: sticky; top: 100px; height: calc(100vh - 120px); overflow-y: auto; padding-right: 1rem; }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: #eee; border-radius: 4px; }
+
+    .sidebar-divider { border: 0; border-top: 1px solid #f5f5f5; margin: 1.5rem 0; }
+
+    .filter-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1.2rem; }
+
+    .category-list { list-style: none; padding: 0; margin: 0; }
+    .category-list li { padding: 0.3rem 0; cursor: pointer; color: #111; font-weight: 500; font-size: 1rem; }
+    .category-list li:hover { color: #757575; }
+    .category-list li.active { font-weight: 600; }
+
+    .check-list { display: flex; flex-direction: column; gap: 0.6rem; }
+    .check-container { display: flex; align-items: center; position: relative; padding-left: 30px; cursor: pointer; font-size: 1rem; user-select: none; min-height: 24px; }
     .check-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
-    .checkmark { position: absolute; top: 2px; left: 0; height: 18px; width: 18px; background-color: #fff; border: 2px solid #eee; border-radius: 4px; }
+    .checkmark { position: absolute; top: 0; left: 0; height: 20px; width: 20px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; }
     .check-container:hover input ~ .checkmark { border-color: #000; }
     .check-container input:checked ~ .checkmark { background-color: #000; border-color: #000; }
-    .checkmark:after { content: ""; position: absolute; display: none; left: 5px; top: 1px; width: 4px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .checkmark:after { content: ""; position: absolute; display: none; left: 6px; top: 2px; width: 5px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
     .check-container input:checked ~ .checkmark:after { display: block; }
 
+    /* Color Grid */
+    .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+    .color-item { display: flex; flex-direction: column; align-items: center; gap: 0.4rem; cursor: pointer; }
+    .color-circle { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #eee; display: flex; align-items: center; justify-content: center; position: relative; }
+    .color-circle .material-icons { font-size: 16px; color: #fff; }
+    .color-item span { font-size: 0.75rem; color: #111; }
+    .color-item.active .color-circle { border: 2px solid #000; }
+    .color-item:nth-child(9) .color-circle .material-icons { color: #000; } /* Check color for white */
+
+    /* Size Grid */
+    .size-filter-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+    .size-filter-btn { background: #fff; border: 1px solid #e5e5e5; border-radius: 4px; padding: 0.6rem 0; font-size: 0.9rem; font-weight: 500; cursor: pointer; }
+    .size-filter-btn:hover { border-color: #000; }
+    .size-filter-btn.active { border-color: #000; background: #f5f5f5; }
+
     /* Product Grid */
-    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem 2rem; }
-    .product-card { cursor: pointer; }
-    .img-container { position: relative; height: 350px; background: #f9f9f9; border-radius: 20px; overflow: hidden; margin-bottom: 1.2rem; }
-    .img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
-    .product-card:hover img { transform: scale(1.08); }
-    
-    .quick-add { position: absolute; right: 1rem; bottom: 1rem; background: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: pointer; display: flex; align-items: center; justify-content: center; opacity: 0; transform: translateY(10px); transition: all 0.3s; }
-    .product-card:hover .quick-add { opacity: 1; transform: translateY(0); }
+    .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .product-card { cursor: pointer; margin-bottom: 2rem; }
+    .img-container { position: relative; aspect-ratio: 1/1; background: #f6f6f6; overflow: hidden; margin-bottom: 0.8rem; }
+    .img-container img { width: 100%; height: 100%; object-fit: cover; }
 
-    .brand { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #999; font-weight: 700; margin: 0 0 0.5rem; }
-    .name { font-size: 1.1rem; font-weight: 600; margin: 0 0 1rem; color: #111; }
-    .bottom-info { display: flex; justify-content: space-between; align-items: center; }
-    .price { font-size: 1.2rem; font-weight: 700; margin: 0; }
-    .tag { font-size: 0.6rem; color: #000; border: 1px solid #000; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
-
-    .no-products { text-align: center; padding: 5rem; border: 1px dashed #eee; border-radius: 20px; color: #888; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-    .no-products .material-icons { font-size: 3rem; color: #ccc; }
+    .brand { font-size: 0.95rem; font-weight: 500; color: #111; margin: 0; }
+    .name { font-size: 0.95rem; font-weight: 500; color: #757575; margin: 0 0 0.5rem; }
+    .price { font-size: 1rem; font-weight: 500; color: #111; margin: 0; }
 
     /* Skeleton loader */
-    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 3rem 2rem; }
-    .skeleton-card { display: flex; flex-direction: column; gap: 0.8rem; }
-    .skeleton-img { height: 350px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 20px; }
+    .loading-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; }
+    .skeleton-card { display: flex; flex-direction: column; gap: 0.5rem; }
+    .skeleton-img { aspect-ratio: 1/1; background: #f6f6f6; border-radius: 0; }
+    .skeleton-line { height: 14px; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
     .skeleton-line { height: 14px; border-radius: 6px; background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
     .skeleton-line.short { width: 40%; }
     .skeleton-line.long { width: 80%; }
@@ -520,7 +672,45 @@ export class CatalogComponent implements OnInit {
 
   // Filtros
   brands = ['Nike', 'Jordan', 'Adidas', 'New Balance', 'Yeezy', 'Converse'];
+  genders = ['Hombre', 'Mujer', 'Unisex'];
+  colors = [
+    { name: 'Negro', hex: '#000000' },
+    { name: 'Azul', hex: '#1e90ff' },
+    { name: 'Marrón', hex: '#8b4513' },
+    { name: 'Verde', hex: '#32cd32' },
+    { name: 'Gris', hex: '#808080' },
+    { name: 'Rosa', hex: '#ff69b4' },
+    { name: 'Morado', hex: '#800080' },
+    { name: 'Rojo', hex: '#ff0000' },
+    { name: 'Blanco', hex: '#ffffff' },
+    { name: 'Amarillo', hex: '#ffff00' }
+  ];
+  priceRanges = [
+    { label: 'Menos de $1000', min: 0, max: 1000 },
+    { label: '$1000 - $2000', min: 1000, max: 2000 },
+    { label: '$2000 - $3000', min: 2000, max: 3000 },
+    { label: 'Más de $3000', min: 3000, max: 999999 }
+  ];
+  availableSizes = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12];
+
+  shopCategories = [
+    { name: 'Personalizar con NBY', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&h=100&fit=crop' },
+    { name: 'Jerseys fútbol', img: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&h=100&fit=crop' },
+    { name: 'Jordan 1', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=100&h=100&fit=crop' },
+    { name: 'Gorras y gorros', img: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=100&h=100&fit=crop' },
+    { name: 'Bras deportivos', img: 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=100&h=100&fit=crop' },
+    { name: 'Chanclas y sandalias', img: 'https://images.unsplash.com/photo-1603487759130-804107147746?w=100&h=100&fit=crop' },
+    { name: 'Air Max', img: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=100&h=100&fit=crop' },
+    { name: 'Dunk', img: 'https://images.unsplash.com/photo-1612821745127-53c5a93ed883?w=100&h=100&fit=crop' }
+  ];
+
   selectedBrands = new Set<string>();
+  selectedGenders = new Set<string>();
+  selectedColors = new Set<string>();
+  selectedPriceRanges = new Set<any>();
+  selectedSizes = new Set<number>();
+
+  showSidebar = signal(true);
   currentSort = 'relevance';
 
   // Detalle del producto (modal)
@@ -533,8 +723,10 @@ export class CatalogComponent implements OnInit {
       id: 'mock-1',
       name: 'Nike Air Max Minimal',
       brand: 'Nike',
-      price: 189.99,
-      base_price: 219.99,
+      gender: 'Hombre',
+      color: 'Negro',
+      price: 1899.99,
+      base_price: 2199.99,
       description: 'Experimenta la máxima amortiguación y diseño minimalista clásico con el modelo Air Max de alta gama. Su suela translúcida y capellada transpirable lo hacen idóneo tanto para running urbano como para looks lifestyle premium.',
       main_image_url: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -549,7 +741,9 @@ export class CatalogComponent implements OnInit {
       id: 'mock-2',
       name: 'Jordan Retro High',
       brand: 'Jordan',
-      price: 210.00,
+      gender: 'Hombre',
+      color: 'Rojo',
+      price: 4299.00,
       description: 'El regreso de la leyenda. Esta silueta clásica Jordan rinde tributo a las duelas de los 80s con piel texturizada genuina y esquemas de color contrastantes que capturan todas las miradas.',
       main_image_url: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -563,7 +757,9 @@ export class CatalogComponent implements OnInit {
       id: 'mock-3',
       name: 'Adidas Ultra Boost',
       brand: 'Adidas',
-      price: 160.00,
+      gender: 'Mujer',
+      color: 'Blanco',
+      price: 3200.00,
       description: 'Diseñados para devolverte energía. El calzado Ultra Boost cuenta con tecnología de retorno continuo, tejido Primeknit flexible y un talón protector para máxima velocidad con la máxima comodidad.',
       main_image_url: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -577,7 +773,9 @@ export class CatalogComponent implements OnInit {
       id: 'mock-4',
       name: 'Yeezy Boost 350',
       brand: 'Yeezy',
-      price: 220.00,
+      gender: 'Unisex',
+      color: 'Marrón',
+      price: 5500.00,
       description: 'Innovación y alta costura se funden en el Yeezy Boost. Un diseño estilizado y aerodinámico en un tono tierra neutro, complementado por la amortiguación suave icónica que lo define.',
       main_image_url: 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -590,7 +788,9 @@ export class CatalogComponent implements OnInit {
       id: 'mock-5',
       name: 'NB Vintage 574',
       brand: 'New Balance',
-      price: 130.00,
+      gender: 'Hombre',
+      color: 'Gris',
+      price: 1300.00,
       description: 'El clásico indiscutible. El modelo 574 es el estandarte de estilo urbano y comodidad duradera de New Balance, confeccionado con paneles de gamuza suave y malla de nylon resistente.',
       main_image_url: 'https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -604,7 +804,9 @@ export class CatalogComponent implements OnInit {
       id: 'mock-6',
       name: 'Chuck Taylor 70',
       brand: 'Converse',
-      price: 95.00,
+      gender: 'Unisex',
+      color: 'Negro',
+      price: 950.00,
       description: 'Un ícono atemporal remasterizado con lona gruesa y plantillas de amortiguación mejorada. Combina con absolutamente todo en tu armario.',
       main_image_url: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?auto=format&fit=crop&q=80&w=600',
       inventory: [
@@ -662,6 +864,31 @@ export class CatalogComponent implements OnInit {
       result = result.filter(p => this.selectedBrands.has(p.brand || ''));
     }
 
+    // Filtrar por Género
+    if (this.selectedGenders.size > 0) {
+      result = result.filter(p => this.selectedGenders.has(p.gender || ''));
+    }
+
+    // Filtrar por Color
+    if (this.selectedColors.size > 0) {
+      result = result.filter(p => this.selectedColors.has(p.color || ''));
+    }
+
+    // Filtrar por Talla
+    if (this.selectedSizes.size > 0) {
+      result = result.filter(p => {
+        const productSizes = p.inventory?.map((inv: any) => inv.size) || [];
+        return Array.from(this.selectedSizes).some(size => productSizes.includes(size));
+      });
+    }
+
+    // Filtrar por Rango de Precio
+    if (this.selectedPriceRanges.size > 0) {
+      result = result.filter(p => {
+        return Array.from(this.selectedPriceRanges).some((range: any) => p.price >= range.min && p.price <= range.max);
+      });
+    }
+
     // Ordenar
     if (this.currentSort === 'price-asc') {
       result.sort((a, b) => a.price - b.price);
@@ -679,6 +906,50 @@ export class CatalogComponent implements OnInit {
       this.selectedBrands.add(brandName);
     }
     this.applyFilters();
+  }
+
+  toggleGenderFilter(gender: string) {
+    if (this.selectedGenders.has(gender)) {
+      this.selectedGenders.delete(gender);
+    } else {
+      this.selectedGenders.add(gender);
+    }
+    this.applyFilters();
+  }
+
+  toggleColorFilter(color: string) {
+    if (this.selectedColors.has(color)) {
+      this.selectedColors.delete(color);
+    } else {
+      this.selectedColors.add(color);
+    }
+    this.applyFilters();
+  }
+
+  toggleSizeFilter(size: number) {
+    if (this.selectedSizes.has(size)) {
+      this.selectedSizes.delete(size);
+    } else {
+      this.selectedSizes.add(size);
+    }
+    this.applyFilters();
+  }
+
+  togglePriceRangeFilter(range: any) {
+    if (this.selectedPriceRanges.has(range)) {
+      this.selectedPriceRanges.delete(range);
+    } else {
+      this.selectedPriceRanges.add(range);
+    }
+    this.applyFilters();
+  }
+
+  toggleSidebar() {
+    this.showSidebar.set(!this.showSidebar());
+  }
+
+  totalActiveFilters() {
+    return this.selectedBrands.size + this.selectedGenders.size + this.selectedColors.size + this.selectedSizes.size + this.selectedPriceRanges.size;
   }
 
   sortProducts(event: Event) {
