@@ -4,6 +4,7 @@ from typing import List
 from ..database import get_db
 from ..models import product_variants as inv_model
 from ..schemas import product_variants as inv_schema
+from ..services.auth_service import AuthService
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
@@ -12,7 +13,7 @@ def get_product_inventory(product_id: str, db: Session = Depends(get_db)):
     return db.query(inv_model.Inventory).filter(inv_model.Inventory.product_id == product_id).all()
 
 @router.post("/", response_model=inv_schema.Inventory)
-def add_inventory(inventory: inv_schema.InventoryCreate, product_id: str, db: Session = Depends(get_db)):
+def add_inventory(inventory: inv_schema.InventoryCreate, product_id: str, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     # Verificar si ya existe la talla para este producto
     db_inv = db.query(inv_model.Inventory).filter(
         inv_model.Inventory.product_id == product_id,
@@ -34,7 +35,7 @@ def add_inventory(inventory: inv_schema.InventoryCreate, product_id: str, db: Se
     return db_inv
 
 @router.put("/{inventory_id}", response_model=inv_schema.Inventory)
-def update_stock(inventory_id: str, quantity: int, db: Session = Depends(get_db)):
+def update_stock(inventory_id: str, quantity: int, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_inv = db.query(inv_model.Inventory).filter(inv_model.Inventory.id == inventory_id).first()
     if not db_inv:
         raise HTTPException(status_code=404, detail="Inventario no encontrado")

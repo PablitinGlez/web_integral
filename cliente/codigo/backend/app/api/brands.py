@@ -5,6 +5,7 @@ from typing import List
 from ..database import get_db
 from ..models import brand as brand_model
 from ..schemas import brand as brand_schema
+from ..services.auth_service import AuthService
 
 router = APIRouter(prefix="/brands", tags=["brands"])
 
@@ -24,7 +25,7 @@ def get_brand(brand_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=brand_schema.Brand)
-def create_brand(brand: brand_schema.BrandCreate, db: Session = Depends(get_db)):
+def create_brand(brand: brand_schema.BrandCreate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     # Validar nombre duplicado (insensible a mayúsculas/minúsculas)
     name_normalized = brand.name.strip()
     existing = db.query(brand_model.Brand).filter(
@@ -45,7 +46,7 @@ def create_brand(brand: brand_schema.BrandCreate, db: Session = Depends(get_db))
 
 
 @router.put("/{brand_id}", response_model=brand_schema.Brand)
-def update_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = Depends(get_db)):
+def update_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand_id).first()
     if not db_brand:
         raise HTTPException(status_code=404, detail="Brand not found")
@@ -74,7 +75,7 @@ def update_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = D
 
 
 @router.patch("/{brand_id}", response_model=brand_schema.Brand)
-def patch_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = Depends(get_db)):
+def patch_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
     db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand_id).first()
     if not db_brand:
         raise HTTPException(status_code=404, detail="Brand not found")
@@ -103,21 +104,14 @@ def patch_brand(brand_id: str, brand: brand_schema.BrandUpdate, db: Session = De
 
 
 
-@router.delete("/{brand_id}")
-def delete_brand(brand_id: str, db: Session = Depends(get_db)):
+@router.delete("/{brand_id}", response_model=brand_schema.Brand)
+def deactivate_brand(brand_id: str, db: Session = Depends(get_db), token: dict = Depends(AuthService.verify_supabase_token)):
+    # Soft delete (Desactivar)
     db_brand = db.query(brand_model.Brand).filter(brand_model.Brand.id == brand_id).first()
     if not db_brand:
         raise HTTPException(status_code=404, detail="Brand not found")
-
-    # Importación diferida para evitar dependencias circulares
-    from ..models.product import Product
-    associated_products = db.query(Product).filter(Product.brand_id == brand_id).count()
-    if associated_products > 0:
-        raise HTTPException(
-            status_code=400,
-            detail="No se puede eliminar la marca porque tiene productos asociados. Intente desactivarla."
-        )
-
-    db.delete(db_brand)
+    
+    db_brand.is_active = False  # type: ignore
     db.commit()
-    return {"message": "Marca eliminada correctamente"}
+    db.refresh(db_brand)
+    return db_brand
