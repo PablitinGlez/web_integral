@@ -1,8 +1,10 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, inject, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { ProductService } from '../../../services/product.service';
 import { CartService } from '../../../services/cart.service';
+import { CategoryService, Category } from '../../../services/category.service';
+import { BrandService, Brand } from '../../../services/brand.service';
 
 @Component({
   selector: 'app-catalog',
@@ -30,38 +32,125 @@ import { CartService } from '../../../services/cart.service';
           </div>
         </div>
 
-        <!-- Horizontal Filter Bar (Mobile/Tablets or optional) -->
+        <!-- Horizontal Filter Bar (Sleek Dropdowns) -->
         <div class="horizontal-filters">
-          <button class="filter-pill" [class.active]="totalActiveFilters() > 0">
+          <button class="filter-pill clear-all-btn" [class.active]="totalActiveFilters() > 0" (click)="clearAllFilters()">
             Filtros {{ totalActiveFilters() > 0 ? '(' + totalActiveFilters() + ')' : '' }}
+            <span class="material-icons" *ngIf="totalActiveFilters() > 0">clear</span>
           </button>
+          
+          <!-- Género -->
           <div class="dropdown-filter">
-            <button class="filter-pill">Género <span class="material-icons">expand_more</span></button>
+            <button class="filter-pill" [class.active]="selectedGenders.size > 0" (click)="toggleDropdown('gender')">
+              Género <span class="material-icons" [class.rotated]="activeDropdown() === 'gender'">expand_more</span>
+            </button>
+            <div class="dropdown-menu" *ngIf="activeDropdown() === 'gender'">
+              <div class="check-list">
+                <label class="check-container" *ngFor="let g of genders">
+                  <input type="checkbox" [checked]="selectedGenders.has(g)" (change)="toggleGenderFilter(g)">
+                  <span class="checkmark"></span>
+                  <span class="check-label">{{ g }}</span>
+                </label>
+              </div>
+            </div>
           </div>
+
+          <!-- Marca -->
           <div class="dropdown-filter">
-            <button class="filter-pill">Marca <span class="material-icons">expand_more</span></button>
+            <button class="filter-pill" [class.active]="selectedBrands.size > 0" (click)="toggleDropdown('brand')">
+              Marca <span class="material-icons" [class.rotated]="activeDropdown() === 'brand'">expand_more</span>
+            </button>
+            <div class="dropdown-menu" *ngIf="activeDropdown() === 'brand'">
+              <div class="check-list">
+                <label class="check-container" *ngFor="let b of brands">
+                  <input type="checkbox" [checked]="selectedBrands.has(b)" (change)="toggleBrandFilter(b)">
+                  <span class="checkmark"></span>
+                  <span class="check-label">{{ b }}</span>
+                </label>
+              </div>
+            </div>
           </div>
+
+          <!-- Talla -->
           <div class="dropdown-filter">
-            <button class="filter-pill">Talla <span class="material-icons">expand_more</span></button>
+            <button class="filter-pill" [class.active]="selectedSizes.size > 0" (click)="toggleDropdown('size')">
+              Talla <span class="material-icons" [class.rotated]="activeDropdown() === 'size'">expand_more</span>
+            </button>
+            <div class="dropdown-menu wide" *ngIf="activeDropdown() === 'size'">
+              <div class="size-filter-grid">
+                <button
+                  *ngFor="let s of availableSizes"
+                  class="size-filter-btn"
+                  [class.active]="selectedSizes.has(s)"
+                  (click)="toggleSizeFilter(s)">
+                  {{ s }}
+                </button>
+              </div>
+            </div>
           </div>
+
+          <!-- Color -->
           <div class="dropdown-filter">
-            <button class="filter-pill">Color <span class="material-icons">expand_more</span></button>
+            <button class="filter-pill" [class.active]="selectedColors.size > 0" (click)="toggleDropdown('color')">
+              Color <span class="material-icons" [class.rotated]="activeDropdown() === 'color'">expand_more</span>
+            </button>
+            <div class="dropdown-menu" *ngIf="activeDropdown() === 'color'">
+              <div class="color-grid">
+                <div
+                  class="color-item"
+                  *ngFor="let c of colors"
+                  (click)="toggleColorFilter(c.name)"
+                  [class.active]="selectedColors.has(c.name)">
+                  <div class="color-circle" [style.background-color]="c.hex">
+                    <span class="material-icons" *ngIf="selectedColors.has(c.name)">check</span>
+                  </div>
+                  <span>{{ c.name }}</span>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <!-- Precio -->
           <div class="dropdown-filter">
-            <button class="filter-pill">Comprar por precio <span class="material-icons">expand_more</span></button>
+            <button class="filter-pill" [class.active]="selectedPriceRanges.size > 0" (click)="toggleDropdown('price')">
+              Precio <span class="material-icons" [class.rotated]="activeDropdown() === 'price'">expand_more</span>
+            </button>
+            <div class="dropdown-menu" *ngIf="activeDropdown() === 'price'">
+              <div class="check-list">
+                <label class="check-container" *ngFor="let r of priceRanges">
+                  <input type="checkbox" [checked]="selectedPriceRanges.has(r)" (change)="togglePriceRangeFilter(r)">
+                  <span class="checkmark"></span>
+                  <span class="check-label">{{ r.label }}</span>
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Compra por categorías (as seen in image) -->
-        <section class="shop-by-category">
+        <!-- Compra por categorías -->
+        <section class="shop-by-category" *ngIf="shopCategories.length > 0">
           <h2>COMPRA POR CATEGORÍAS</h2>
-          <div class="category-scroll">
-            <div class="category-card" *ngFor="let cat of shopCategories">
-              <div class="cat-img-wrapper">
-                <img [src]="cat.img" [alt]="cat.name">
+          <div class="carousel-wrapper" (mouseenter)="stopAutoPlay()" (mouseleave)="startAutoPlay()">
+            <button class="carousel-btn prev-btn" (click)="scrollCategories(categoryScroll, 'left')" aria-label="Anterior">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            
+            <div class="category-scroll" #categoryScroll [class.autoplay-active]="isAutoplayActive()">
+              <div 
+                class="category-card" 
+                *ngFor="let cat of shopCategories"
+                [class.active-card]="selectedCategory() === cat.id"
+                (click)="selectCategory(cat.id || null)">
+                <div class="cat-img-wrapper">
+                  <img [src]="cat.img" [alt]="cat.name">
+                </div>
+                <span>{{ cat.name }}</span>
               </div>
-              <span>{{ cat.name }}</span>
             </div>
+            
+            <button class="carousel-btn next-btn" (click)="scrollCategories(categoryScroll, 'right')" aria-label="Siguiente">
+              <span class="material-icons">chevron_right</span>
+            </button>
           </div>
         </section>
       </header>
@@ -70,20 +159,19 @@ import { CartService } from '../../../services/cart.service';
         <!-- Sidebar Filters -->
         <aside class="sidebar" *ngIf="showSidebar()">
           <div class="sidebar-scrollable">
+            <!-- Categorías Dinámicas -->
             <div class="filter-group">
+              <h3>Categorías</h3>
               <ul class="category-list">
-                <li class="active">Todos los productos</li>
-                <li>Jordan 1</li>
-                <li>Jordan 4</li>
-                <li>Jordan Spizike</li>
-                <li>Jordan Flight Court</li>
-                <li>Jordan Session</li>
-                <li>Luka Doncic</li>
-                <li>Jayson Tatum</li>
-                <li>Básquetbol</li>
-                <li>Fútbol americano</li>
-                <li>Golf</li>
-                <li>Sandalias y chanclas</li>
+                <li [class.active]="selectedCategory() === null" (click)="selectCategory(null)">
+                  Todos los productos
+                </li>
+                <li 
+                  *ngFor="let cat of dbCategories()"
+                  [class.active]="selectedCategory() === cat.id"
+                  (click)="selectCategory(cat.id || null)">
+                  {{ cat.name }}
+                </li>
               </ul>
             </div>
 
@@ -94,9 +182,9 @@ import { CartService } from '../../../services/cart.service';
               <h3>Género</h3>
               <div class="check-list">
                 <label class="check-container" *ngFor="let g of genders">
-                  {{ g }}
                   <input type="checkbox" [checked]="selectedGenders.has(g)" (change)="toggleGenderFilter(g)">
                   <span class="checkmark"></span>
+                  <span class="check-label">{{ g }}</span>
                 </label>
               </div>
             </div>
@@ -108,9 +196,9 @@ import { CartService } from '../../../services/cart.service';
               <h3>Marca</h3>
               <div class="check-list">
                 <label class="check-container" *ngFor="let b of brands">
-                  {{ b }}
                   <input type="checkbox" [checked]="selectedBrands.has(b)" (change)="toggleBrandFilter(b)">
                   <span class="checkmark"></span>
+                  <span class="check-label">{{ b }}</span>
                 </label>
               </div>
             </div>
@@ -157,9 +245,9 @@ import { CartService } from '../../../services/cart.service';
               <h3>Comprar por precio</h3>
               <div class="check-list">
                 <label class="check-container" *ngFor="let r of priceRanges">
-                  {{ r.label }}
                   <input type="checkbox" [checked]="selectedPriceRanges.has(r)" (change)="togglePriceRangeFilter(r)">
                   <span class="checkmark"></span>
+                  <span class="check-label">{{ r.label }}</span>
                 </label>
               </div>
             </div>
@@ -305,21 +393,156 @@ import { CartService } from '../../../services/cart.service';
     .sort-container span { font-size: 1rem; }
     .sort-select { border: none; font-size: 1rem; font-weight: 500; outline: none; background: #fff; cursor: pointer; padding: 0.5rem; }
 
-    .horizontal-filters { display: flex; gap: 0.5rem; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 0.8rem 0; overflow-x: auto; scrollbar-width: none; }
+    .horizontal-filters { display: flex; gap: 0.75rem; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 1rem 0; overflow-x: auto; scrollbar-width: none; margin-bottom: 1.5rem; }
     .horizontal-filters::-webkit-scrollbar { display: none; }
-    .filter-pill { background: #fff; border: 1px solid #e5e5e5; border-radius: 20px; padding: 0.5rem 1.2rem; font-size: 0.95rem; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
-    .filter-pill:hover { border-color: #000; }
-    .filter-pill.active { border-color: #000; background: #f5f5f5; }
+    .filter-pill {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 24px;
+      padding: 0.6rem 1.4rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #111;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+    .filter-pill:hover {
+      background: #f5f5f5;
+      border-color: #111;
+    }
+    .filter-pill.active {
+      border-color: #111;
+      background: #111;
+      color: #fff;
+    }
+    .filter-pill.active .material-icons {
+      color: #fff;
+    }
+    .filter-pill .material-icons {
+      font-size: 1.1rem;
+      color: #666;
+      transition: transform 0.2s ease;
+    }
+    .filter-pill .material-icons.rotated {
+      transform: rotate(180deg);
+    }
+    .clear-all-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      border-color: #e5e5e5;
+    }
+    .clear-all-btn.active {
+      background: #e03131;
+      border-color: #e03131;
+      color: #fff;
+    }
 
-    /* Shop by Category */
-    .shop-by-category { margin-top: 3rem; text-align: center; }
-    .shop-by-category h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 2rem; letter-spacing: 1px; }
-    .category-scroll { display: flex; gap: 2rem; overflow-x: auto; padding-bottom: 1rem; scrollbar-width: none; justify-content: center; }
+    /* Dropdowns */
+    .dropdown-filter { position: relative; display: inline-block; }
+    .dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      z-index: 1000;
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      border-radius: 16px;
+      padding: 1.2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      min-width: 220px;
+      animation: dropdownFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dropdown-menu.wide { min-width: 320px; }
+    @keyframes dropdownFadeIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Shop by Category Carousel */
+    .shop-by-category { margin-top: 2rem; margin-bottom: 2rem; text-align: center; }
+    .shop-by-category h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 1.5rem; letter-spacing: 1px; color: #111; text-transform: uppercase; }
+    
+    .carousel-wrapper {
+      position: relative;
+      max-width: 800px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .category-scroll {
+      display: flex;
+      gap: 2rem;
+      overflow-x: auto;
+      padding: 0.8rem 0;
+      scrollbar-width: none;
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      width: 100%;
+      justify-content: flex-start;
+    }
+    .category-scroll.autoplay-active {
+      scroll-snap-type: none;
+      scroll-behavior: auto;
+    }
+    
     .category-scroll::-webkit-scrollbar { display: none; }
-    .category-card { display: flex; flex-direction: column; align-items: center; gap: 0.8rem; cursor: pointer; min-width: 120px; }
-    .cat-img-wrapper { width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; }
-    .cat-img-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
-    .category-card span { font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
+    
+    .category-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+      cursor: pointer;
+      min-width: 110px;
+      scroll-snap-align: center;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .category-card:hover { transform: translateY(-4px); }
+    .cat-img-wrapper { width: 90px; height: 90px; border-radius: 50%; background: #f6f6f6; display: flex; align-items: center; justify-content: center; overflow: hidden; transition: all 0.3s ease; border: 2px solid transparent; }
+    .category-card:hover .cat-img-wrapper { box-shadow: 0 8px 20px rgba(0,0,0,0.06); background: #eaeaea; }
+    .category-card.active-card .cat-img-wrapper { border-color: #111; background: #fff; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+    .cat-img-wrapper img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; display: block; }
+    .cat-img-wrapper img[alt] { text-indent: -9999px; overflow: hidden; }
+    .category-card:hover .cat-img-wrapper img { transform: scale(1.08); }
+    .category-card span { font-size: 0.85rem; font-weight: 600; color: #444; transition: color 0.2s ease; }
+    .category-card:hover span, .category-card.active-card span { color: #111; }
+
+    /* Carousel Nav Buttons */
+    .carousel-btn {
+      background: #ffffff;
+      border: 1px solid #eee;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      z-index: 10;
+      transition: all 0.2s ease;
+      position: absolute;
+    }
+    .carousel-btn:hover {
+      background: #111;
+      border-color: #111;
+      color: #fff;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+    .prev-btn { left: -50px; }
+    .next-btn { right: -50px; }
+    
+    @media (max-width: 992px) {
+      .carousel-wrapper { max-width: 100%; }
+      .carousel-btn { display: none; } /* On mobile, let touch scroll handle it */
+    }n { color: #111; }
 
     /* Layout */
     .catalog-layout { display: grid; grid-template-columns: 260px 1fr; gap: 2rem; transition: all 0.3s; }
@@ -335,18 +558,20 @@ import { CartService } from '../../../services/cart.service';
     .filter-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 1.2rem; }
 
     .category-list { list-style: none; padding: 0; margin: 0; }
-    .category-list li { padding: 0.3rem 0; cursor: pointer; color: #111; font-weight: 500; font-size: 1rem; }
-    .category-list li:hover { color: #757575; }
-    .category-list li.active { font-weight: 600; }
+    .category-list li { padding: 0.4rem 0; cursor: pointer; color: #666; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease; display: flex; align-items: center; }
+    .category-list li:hover { color: #000; padding-left: 4px; }
+    .category-list li.active { font-weight: 700; color: #000; }
 
-    .check-list { display: flex; flex-direction: column; gap: 0.6rem; }
-    .check-container { display: flex; align-items: center; position: relative; padding-left: 30px; cursor: pointer; font-size: 1rem; user-select: none; min-height: 24px; }
-    .check-container input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
-    .checkmark { position: absolute; top: 0; left: 0; height: 20px; width: 20px; background-color: #fff; border: 1px solid #ccc; border-radius: 4px; }
-    .check-container:hover input ~ .checkmark { border-color: #000; }
-    .check-container input:checked ~ .checkmark { background-color: #000; border-color: #000; }
-    .checkmark:after { content: ""; position: absolute; display: none; left: 6px; top: 2px; width: 5px; height: 10px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .check-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .check-container { display: flex; align-items: center; position: relative; padding-left: 32px; cursor: pointer; font-size: 0.95rem; user-select: none; min-height: 22px; color: #444; transition: color 0.2s ease; }
+    .check-container:hover { color: #000; }
+    .check-container input[type="checkbox"] { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; margin: 0; }
+    .checkmark { position: absolute; top: 1px; left: 0; height: 18px; width: 18px; background-color: #fff; border: 1.5px solid #d1d1d1; border-radius: 4px; transition: all 0.2s ease; }
+    .check-container:hover input ~ .checkmark { border-color: #111; }
+    .check-container input:checked ~ .checkmark { background-color: #111; border-color: #111; }
+    .checkmark:after { content: ""; position: absolute; display: none; left: 5px; top: 1px; width: 4px; height: 9px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
     .check-container input:checked ~ .checkmark:after { display: block; }
+    .check-label { font-weight: 500; font-size: 0.95rem; }
 
     /* Color Grid */
     .color-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
@@ -658,14 +883,30 @@ import { CartService } from '../../../services/cart.service';
     }
   `]
 })
-export class CatalogComponent implements OnInit {
+export class CatalogComponent implements OnInit, AfterViewInit, OnDestroy {
+  private categoryScrollRef?: ElementRef<HTMLDivElement>;
+  autoPlayInterval: any;
+
+  @ViewChild('categoryScroll', { static: false }) set categoryScroll(content: ElementRef<HTMLDivElement>) {
+    if (content) {
+      this.categoryScrollRef = content;
+      // Iniciar autoplay una vez que el elemento esté disponible
+      this.startAutoPlay();
+    }
+  }
+
   productService = inject(ProductService);
   cartService = inject(CartService);
+  categoryService = inject(CategoryService);
+  brandService = inject(BrandService);
   router = inject(Router);
+  route = inject(ActivatedRoute);
+  isAutoplayActive = signal(true);
 
   products = signal<any[]>([]);
   filteredProducts = signal<any[]>([]);
   loading = signal(true);
+  searchQuery = signal<string>('');
 
   // Para el skeleton loader (6 tarjetas de carga animadas)
   skeletons = [1, 2, 3, 4, 5, 6];
@@ -693,16 +934,17 @@ export class CatalogComponent implements OnInit {
   ];
   availableSizes = [5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12];
 
-  shopCategories = [
-    { name: 'Personalizar con NBY', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=100&h=100&fit=crop' },
-    { name: 'Jerseys fútbol', img: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=100&h=100&fit=crop' },
-    { name: 'Jordan 1', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=100&h=100&fit=crop' },
-    { name: 'Gorras y gorros', img: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=100&h=100&fit=crop' },
-    { name: 'Bras deportivos', img: 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?w=100&h=100&fit=crop' },
-    { name: 'Chanclas y sandalias', img: 'https://images.unsplash.com/photo-1603487759130-804107147746?w=100&h=100&fit=crop' },
-    { name: 'Air Max', img: 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=100&h=100&fit=crop' },
-    { name: 'Dunk', img: 'https://images.unsplash.com/photo-1612821745127-53c5a93ed883?w=100&h=100&fit=crop' }
+  mockCategories = [
+    { name: 'Personalizar con NBY', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&h=300&fit=crop' },
+    { name: 'Jerseys fútbol', img: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=300&h=300&fit=crop' },
+    { name: 'Jordan 1', img: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=300&h=300&fit=crop' },
+    { name: 'Gorras y gorros', img: 'https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=300&h=300&fit=crop' },
+    { name: 'Bras deportivos', img: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=300&h=300&fit=crop' },
+    { name: 'Chanclas y sandalias', img: 'https://images.unsplash.com/photo-1603252109303-2751441dd157?w=300&h=300&fit=crop' },
+    { name: 'Air Max', img: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=300&h=300&fit=crop' },
+    { name: 'Dunk', img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=300&h=300&fit=crop' }
   ];
+  shopCategories: Array<{ id?: string; name: string; img: string }> = [...this.mockCategories, ...this.mockCategories];
 
   selectedBrands = new Set<string>();
   selectedGenders = new Set<string>();
@@ -712,6 +954,11 @@ export class CatalogComponent implements OnInit {
 
   showSidebar = signal(true);
   currentSort = 'relevance';
+
+  dbCategories = signal<Category[]>([]);
+  dbBrands = signal<Brand[]>([]);
+  selectedCategory = signal<string | null>(null);
+  activeDropdown = signal<string | null>(null);
 
   // Detalle del producto (modal)
   selectedProduct: any = null;
@@ -820,16 +1067,93 @@ export class CatalogComponent implements OnInit {
 
   ngOnInit() {
     this.loading.set(true);
-    // Inicializamos con mock para que se vea rico de inmediato
     this.setProductsList(this.mockProducts);
+
+    // Suscribirse a query parameters para aplicar filtros desde la URL
+    this.route.queryParams.subscribe(params => {
+      this.selectedBrands.clear();
+      this.selectedGenders.clear();
+      this.selectedColors.clear();
+      this.selectedSizes.clear();
+      this.selectedPriceRanges.clear();
+      
+      this.selectedCategory.set(params['category'] || null);
+
+      if (params['brand']) {
+        const brandsArray = Array.isArray(params['brand']) ? params['brand'] : [params['brand']];
+        brandsArray.forEach(b => this.selectedBrands.add(b));
+      }
+      if (params['gender']) {
+        const gendersArray = Array.isArray(params['gender']) ? params['gender'] : [params['gender']];
+        gendersArray.forEach(g => this.selectedGenders.add(g));
+      }
+      if (params['search']) {
+        this.searchQuery.set(params['search']);
+      } else {
+        this.searchQuery.set('');
+      }
+
+      if (params['priceMax']) {
+        const maxVal = parseFloat(params['priceMax']);
+        const minVal = params['priceMin'] ? parseFloat(params['priceMin']) : 0;
+        const range = this.priceRanges.find(r => r.min === minVal && r.max === maxVal);
+        if (range) {
+          this.selectedPriceRanges.add(range);
+        } else {
+          this.selectedPriceRanges.add({ label: `Hasta $${maxVal}`, min: minVal, max: maxVal });
+        }
+      } else if (params['priceMin']) {
+        const minVal = parseFloat(params['priceMin']);
+        const range = this.priceRanges.find(r => r.min === minVal && r.max === 999999);
+        if (range) {
+          this.selectedPriceRanges.add(range);
+        } else {
+          this.selectedPriceRanges.add({ label: `Más de $${minVal}`, min: minVal, max: 999999 });
+        }
+      }
+
+      this.applyFilters();
+    });
+
+    // Cargar categorías dinámicas
+    this.categoryService.getCategories().subscribe({
+      next: (cats) => {
+        const activeCats = cats.filter(c => c.is_active !== false);
+        this.dbCategories.set(activeCats);
+        
+        const defaultImages: { [key: string]: string } = {
+          'Running': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150&h=150&fit=crop',
+          'Basketball': 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=150&h=150&fit=crop',
+          'Casual': 'https://images.unsplash.com/photo-1552346154-21d32810aba3?w=150&h=150&fit=crop',
+          'Deportivo': 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=150&h=150&fit=crop'
+        };
+        
+        const mappedCats = activeCats.map(c => ({
+          id: c.id,
+          name: c.name,
+          img: defaultImages[c.name] || 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=150&h=150&fit=crop'
+        }));
+        this.shopCategories = [...mappedCats, ...mappedCats];
+      },
+      error: (err) => console.error('Error cargando categorías en catálogo', err)
+    });
+
+    // Cargar marcas dinámicas
+    this.brandService.getBrands().subscribe({
+      next: (brandsList) => {
+        const activeBrands = brandsList.filter(b => b.is_active !== false).map(b => b.name);
+        if (activeBrands.length > 0) {
+          this.brands = activeBrands;
+        }
+      },
+      error: (err) => console.error('Error cargando marcas en catálogo', err)
+    });
 
     this.productService.getProducts().subscribe({
       next: (data) => {
-        // Solo productos activos son visibles en el catálogo público
         const activeOnly = (data ?? []).filter((p: any) => p.is_active !== false);
 
         if (activeOnly.length > 0) {
-          // Si los productos de la API no traen inventario, les creamos uno por defecto para que no fallen las tallas
           const apiProducts = activeOnly.map(p => ({
             ...p,
             inventory: p.inventory && p.inventory.length > 0 ? p.inventory : [
@@ -851,6 +1175,14 @@ export class CatalogComponent implements OnInit {
     });
   }
 
+  ngAfterViewInit() {
+    this.startAutoPlay();
+  }
+
+  ngOnDestroy() {
+    this.stopAutoPlay();
+  }
+
   setProductsList(list: any[]) {
     this.products.set(list);
     this.applyFilters();
@@ -858,6 +1190,21 @@ export class CatalogComponent implements OnInit {
 
   applyFilters() {
     let result = [...this.products()];
+
+    // Filtrar por Búsqueda (Texto)
+    if (this.searchQuery() && this.searchQuery().trim()) {
+      const q = this.searchQuery().toLowerCase().trim();
+      result = result.filter(p => 
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.brand && p.brand.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+
+    // Filtrar por Categoría
+    if (this.selectedCategory()) {
+      result = result.filter(p => p.category_id === this.selectedCategory());
+    }
 
     // Filtrar por Marca
     if (this.selectedBrands.size > 0) {
@@ -949,7 +1296,99 @@ export class CatalogComponent implements OnInit {
   }
 
   totalActiveFilters() {
-    return this.selectedBrands.size + this.selectedGenders.size + this.selectedColors.size + this.selectedSizes.size + this.selectedPriceRanges.size;
+    return this.selectedBrands.size + 
+           this.selectedGenders.size + 
+           this.selectedColors.size + 
+           this.selectedSizes.size + 
+           this.selectedPriceRanges.size + 
+           (this.selectedCategory() ? 1 : 0) + 
+           (this.searchQuery().trim() ? 1 : 0);
+  }
+
+  toggleDropdown(dropdown: string) {
+    this.activeDropdown.set(this.activeDropdown() === dropdown ? null : dropdown);
+  }
+
+  selectCategory(categoryId: string | null) {
+    this.selectedCategory.set(categoryId);
+    this.applyFilters();
+  }
+
+  scrollCategories(element: HTMLDivElement, direction: 'left' | 'right') {
+    this.stopAutoPlay();
+    const scrollAmount = 260; // Ancho aproximado de 2 tarjetas + gaps
+    const halfScrollWidth = element.scrollWidth / 2;
+
+    let targetScroll = direction === 'left' 
+      ? element.scrollLeft - scrollAmount 
+      : element.scrollLeft + scrollAmount;
+
+    // Si nos pasamos del inicio (izquierda), saltamos de forma invisible a la mitad equivalente
+    if (targetScroll < 0) {
+      element.scrollLeft = halfScrollWidth + element.scrollLeft;
+      targetScroll = element.scrollLeft - scrollAmount;
+    }
+    // Si nos pasamos de la mitad (derecha), restamos la mitad para seguir desplazando sin interrupción
+    else if (targetScroll >= halfScrollWidth) {
+      element.scrollLeft = element.scrollLeft - halfScrollWidth;
+      targetScroll = element.scrollLeft + scrollAmount;
+    }
+
+    // Desactivar temporalmente autoplay-active para permitir el scroll suave nativo del botón
+    this.isAutoplayActive.set(false);
+
+    element.scrollTo({
+      left: targetScroll,
+      behavior: 'smooth'
+    });
+
+    // Reiniciar autoplay tras interactuar si el mouse no está encima
+    setTimeout(() => {
+      this.startAutoPlay();
+    }, 5000);
+  }
+
+  startAutoPlay() {
+    this.stopAutoPlay();
+    this.isAutoplayActive.set(true);
+    
+    this.autoPlayInterval = setInterval(() => {
+      const element = this.categoryScrollRef?.nativeElement;
+      if (!element) return;
+
+      const halfScrollWidth = element.scrollWidth / 2;
+      if (halfScrollWidth <= 0) return; // Si no hay desbordamiento, no hacer nada
+
+      // Movimiento continuo muy suave de 1 píxel
+      element.scrollLeft += 1;
+
+      // Si el scroll llega a la mitad del ancho total (el fin del primer bloque idéntico),
+      // restamos la mitad para volver al primer bloque de manera invisible y seguir de forma infinita.
+      if (element.scrollLeft >= halfScrollWidth) {
+        element.scrollLeft = element.scrollLeft - halfScrollWidth;
+      }
+    }, 30); // ~33 píxeles por segundo
+  }
+
+  stopAutoPlay() {
+    this.isAutoplayActive.set(false);
+    if (this.autoPlayInterval) {
+      clearInterval(this.autoPlayInterval);
+      this.autoPlayInterval = null;
+    }
+  }
+
+  clearAllFilters() {
+    this.selectedBrands.clear();
+    this.selectedGenders.clear();
+    this.selectedColors.clear();
+    this.selectedSizes.clear();
+    this.selectedPriceRanges.clear();
+    this.selectedCategory.set(null);
+    this.activeDropdown.set(null);
+    this.searchQuery.set('');
+    this.router.navigate([], { queryParams: {} });
+    this.applyFilters();
   }
 
   sortProducts(event: Event) {

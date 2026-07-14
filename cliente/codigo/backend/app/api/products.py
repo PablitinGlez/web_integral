@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from uuid import UUID
@@ -30,7 +30,12 @@ def get_products(
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    query = db.query(product_model.Product)
+    query = db.query(product_model.Product).options(
+        selectinload(product_model.Product.category),
+        selectinload(product_model.Product.brand_rel),
+        selectinload(product_model.Product.images),
+        selectinload(product_model.Product.inventory)
+    )
 
     if category_id:
         query = query.filter(product_model.Product.category_id == category_id)
@@ -57,7 +62,12 @@ def get_products(
 
 @router.get("/{product_id}", response_model=product_schema.Product)
 def get_product(product_id: str, db: Session = Depends(get_db)):
-    product = db.query(product_model.Product).filter(product_model.Product.id == product_id).first()
+    product = db.query(product_model.Product).options(
+        selectinload(product_model.Product.category),
+        selectinload(product_model.Product.brand_rel),
+        selectinload(product_model.Product.images),
+        selectinload(product_model.Product.inventory)
+    ).filter(product_model.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
     return product
