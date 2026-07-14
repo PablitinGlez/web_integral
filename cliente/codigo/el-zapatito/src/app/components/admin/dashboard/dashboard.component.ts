@@ -212,7 +212,7 @@ export class DashboardComponent implements OnInit {
     this.metrics = this.getDefaultMetrics();
     this.cdr.detectChanges();
 
-    this.http.get<any>('http://localhost:8000/metrics/summary')
+    this.http.get<any>('https://web-integral.onrender.com/metrics/summary')
       .pipe(
         retryWhen(errors => errors.pipe(delay(500), take(3))),
         catchError(() => {

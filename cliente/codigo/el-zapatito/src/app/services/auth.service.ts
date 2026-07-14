@@ -7,7 +7,7 @@ import { supabase } from './supabase-client';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private supabase = supabase;
-  private apiUrl = 'http://localhost:8000/auth';
+  private apiUrl = 'https://web-integral.onrender.com/auth';
   private authReadyPromise: Promise<void>;
 
   currentUser = signal<{

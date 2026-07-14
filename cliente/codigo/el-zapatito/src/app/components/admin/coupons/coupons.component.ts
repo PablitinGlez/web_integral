@@ -154,7 +154,7 @@ export class CouponsComponent implements OnInit {
     this.formMessage = '';
     this.cdr.detectChanges();
 
-    this.http.post('http://localhost:8000/coupons/', payload)
+    this.http.post('https://web-integral.onrender.com/coupons/', payload)
       .pipe(finalize(() => {
         this.creatingCoupon = false;
         this.cdr.detectChanges();
@@ -174,7 +174,7 @@ export class CouponsComponent implements OnInit {
   }
 
   private loadCoupons(): void {
-    this.http.get<any[]>('http://localhost:8000/coupons/')
+    this.http.get<any[]>('https://web-integral.onrender.com/coupons/')
       .pipe(
         retryWhen(errors => errors.pipe(delay(500), take(3))),
         catchError(() => {

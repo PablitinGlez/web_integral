@@ -15,7 +15,7 @@ export interface Category {
   providedIn: 'root'
 })
 export class CategoryService {
-  private apiUrl = 'http://localhost:8000/categories/';
+  private apiUrl = 'https://web-integral.onrender.com/categories/';
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 

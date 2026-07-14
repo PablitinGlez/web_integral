@@ -29,7 +29,7 @@ describe('CouponsComponent', () => {
 
     expect(component.creatingCoupon).toBeTrue();
 
-    const req = httpMock.expectOne('http://localhost:8000/coupons/');
+    const req = httpMock.expectOne('https://web-integral.onrender.com/coupons/');
     req.flush('error', { status: 500, statusText: 'Server Error' });
 
     expect(component.creatingCoupon).toBeFalse();

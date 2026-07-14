@@ -29,7 +29,7 @@ export interface AddressInput {
 
 @Injectable({ providedIn: 'root' })
 export class AddressService {
-  private apiUrl = 'http://localhost:8000/addresses';
+  private apiUrl = 'https://web-integral.onrender.com/addresses';
 
   addresses = signal<Address[]>([]);
   loading = signal(false);

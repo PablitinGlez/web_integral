@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
   providedIn: 'root'
 })
 export class OrderService {
-  private apiUrl = 'http://localhost:8000/orders';
+  private apiUrl = 'https://web-integral.onrender.com/orders';
   private http = inject(HttpClient);
   private authService = inject(AuthService);
 
@@ -62,7 +62,7 @@ export class OrderService {
   }
 
   validateCoupon(code: string, subtotal: number): Observable<any> {
-    return this.http.get<any>(`http://localhost:8000/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}`);
+    return this.http.get<any>(`https://web-integral.onrender.com/coupons/validate?code=${encodeURIComponent(code)}&subtotal=${subtotal}`);
   }
 
   getPaypalConfig(): Observable<any> {

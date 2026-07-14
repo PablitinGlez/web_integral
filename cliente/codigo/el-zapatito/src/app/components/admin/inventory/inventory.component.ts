@@ -253,7 +253,7 @@ export class InventoryComponent implements OnInit {
   loadInventory() {
     if (!this.selectedProductId) return;
 
-    this.http.get<any[]>(`http://localhost:8000/inventory/${this.selectedProductId}`).subscribe({
+    this.http.get<any[]>(`https://web-integral.onrender.com/inventory/${this.selectedProductId}`).subscribe({
       next: (data) => {
         if (data) {
           // Ordenar por talla
@@ -286,7 +286,7 @@ export class InventoryComponent implements OnInit {
 
     if (existing) {
       // Caso 1: PUT (Actualizar stock)
-      this.http.put(`http://localhost:8000/inventory/${existing.id}?quantity=${this.stockForm.stock_quantity}`, {}).subscribe({
+      this.http.put(`https://web-integral.onrender.com/inventory/${existing.id}?quantity=${this.stockForm.stock_quantity}`, {}).subscribe({
         next: (updated: any) => {
           existing.stock_quantity = this.stockForm.stock_quantity;
           this.loading = false;
@@ -303,7 +303,7 @@ export class InventoryComponent implements OnInit {
         size: this.stockForm.size,
         stock_quantity: this.stockForm.stock_quantity
       };
-      this.http.post(`http://localhost:8000/inventory/?product_id=${this.selectedProductId}`, body).subscribe({
+      this.http.post(`https://web-integral.onrender.com/inventory/?product_id=${this.selectedProductId}`, body).subscribe({
         next: (created: any) => {
           this.currentInventory.push(created);
           this.currentInventory.sort((a, b) => a.size - b.size);

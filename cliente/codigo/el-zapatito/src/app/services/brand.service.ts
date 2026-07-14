@@ -15,7 +15,7 @@ export interface Brand {
   providedIn: 'root'
 })
 export class BrandService {
-  private apiUrl = 'http://localhost:8000/brands/';
+  private apiUrl = 'https://web-integral.onrender.com/brands/';
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
