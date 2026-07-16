@@ -40,6 +40,9 @@ import { CommonModule } from '@angular/common';
             <a routerLink="/admin/inventory" routerLinkActive="active">
               <span class="material-icons">inventory</span> Inventario
             </a>
+            <a routerLink="/admin/suppliers" routerLinkActive="active">
+              <span class="material-icons">local_shipping</span> Proveedores
+            </a>
             <a routerLink="/admin/orders" routerLinkActive="active">
               <span class="material-icons">shopping_cart</span> Pedidos
             </a>
