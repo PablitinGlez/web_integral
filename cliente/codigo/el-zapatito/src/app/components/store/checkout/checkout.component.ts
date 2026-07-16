@@ -215,8 +215,14 @@ import { AddressService, Address, AddressInput } from '../../../services/address
                           </label>
                           
                           <!-- Contenedor del Botón de PayPal -->
-                          <div class="paypal-buttons-inline-wrapper">
+                          <div class="paypal-buttons-inline-wrapper" style="display: flex; flex-direction: column; gap: 0.8rem; width: 100%;">
                             <div id="paypal-button-container" class="paypal-buttons-wrapper"></div>
+                            
+                            <!-- Botón para omitir pago y generar pedido directamente (para pruebas/desarrollo) -->
+                            <button class="btn-simulate-pay" (click)="simulateOrder()" style="background: #111; color: #fff; width: 100%; border: none; padding: 0.85rem; border-radius: 8px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: background 0.2s; margin-top: 0.5rem;">
+                              <span class="material-icons">shopping_bag</span>
+                              Pagar
+                            </button>
                           </div>
                         </div>
 
@@ -1737,5 +1743,10 @@ export class CheckoutComponent implements OnInit {
         this.isSubmittingOrder = false;
       }
     });
+  }
+
+  simulateOrder() {
+    const mockId = 'MOCK_PAY_' + Math.floor(100000 + Math.random() * 900000);
+    this.submitOrder(mockId);
   }
 }

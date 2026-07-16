@@ -5,6 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from .category import Category
 from .product_variants import ProductImage, Inventory
+from .supplier import Supplier
 
 class ProductBase(BaseModel):
     name: str
@@ -13,6 +14,7 @@ class ProductBase(BaseModel):
     price: float
     base_price: Optional[float] = None
     category_id: Optional[UUID] = None
+    supplier_id: Optional[UUID] = None
     main_image_url: Optional[str] = None
     gender: Optional[str] = None
     colors: Optional[str] = None
@@ -29,6 +31,7 @@ class ProductUpdate(BaseModel):
     price: Optional[float] = None
     base_price: Optional[float] = None
     category_id: Optional[UUID] = None
+    supplier_id: Optional[UUID] = None
     main_image_url: Optional[str] = None
     gender: Optional[str] = None
     colors: Optional[str] = None
@@ -43,6 +46,7 @@ class Product(ProductBase):
     images: List[ProductImage] = []
     inventory: List[Inventory] = []
     category: Optional[Category] = None
+    supplier: Optional[Supplier] = None
 
     class Config:
         from_attributes = True

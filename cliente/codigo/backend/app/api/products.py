@@ -33,6 +33,7 @@ def get_products(
     query = db.query(product_model.Product).options(
         selectinload(product_model.Product.category),
         selectinload(product_model.Product.brand_rel),
+        selectinload(product_model.Product.supplier),
         selectinload(product_model.Product.images),
         selectinload(product_model.Product.inventory)
     )
@@ -65,6 +66,7 @@ def get_product(product_id: str, db: Session = Depends(get_db)):
     product = db.query(product_model.Product).options(
         selectinload(product_model.Product.category),
         selectinload(product_model.Product.brand_rel),
+        selectinload(product_model.Product.supplier),
         selectinload(product_model.Product.images),
         selectinload(product_model.Product.inventory)
     ).filter(product_model.Product.id == product_id).first()
@@ -79,7 +81,8 @@ async def create_product(
     description: str = Form(default="Tenis deportivos cómodos para uso diario", description="Descripción del producto"),
     price: float = Form(default=999.99, description="Precio de venta"),
     base_price: float = Form(default=750.00, description="Precio base / costo"),
-    category_id: Optional[str] = Form(default="4092116e-bb10-41a7-8c63-fd95d281783a", description="UUID de la categoría (opcional)"),
+    category_id: Optional[str] = Form(default=None, description="UUID de la categoría (opcional)"),
+    supplier_id: Optional[str] = Form(default=None, description="UUID del proveedor (opcional)"),
     sizes: Optional[str] = Form(
         default='[{"size": 25, "stock_quantity": 10}, {"size": 26, "stock_quantity": 5}, {"size": 27, "stock_quantity": 8}]',
         description='Tallas en formato JSON: [{"size": 25, "stock_quantity": 10}]'
@@ -161,6 +164,15 @@ async def create_product(
         except ValueError:
             raise HTTPException(status_code=400, detail="El category_id proporcionado no es un UUID válido")
 
+    # Resolver supplier_id
+    valid_supplier_id = None
+    if supplier_id and supplier_id != "string":
+        try:
+            UUID(supplier_id)
+            valid_supplier_id = supplier_id
+        except ValueError:
+            raise HTTPException(status_code=400, detail="El supplier_id proporcionado no es un UUID válido")
+
     # 2. Crear producto en DB
     new_product = product_model.Product(
         name=name,
@@ -169,6 +181,7 @@ async def create_product(
         price=price,
         base_price=base_price,
         category_id=valid_category_id,
+        supplier_id=valid_supplier_id,
         main_image_url=main_image_url,
         gender=gender,
         colors=colors,

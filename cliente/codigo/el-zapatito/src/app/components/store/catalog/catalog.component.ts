@@ -393,8 +393,7 @@ import { BrandService, Brand } from '../../../services/brand.service';
     .sort-container span { font-size: 1rem; }
     .sort-select { border: none; font-size: 1rem; font-weight: 500; outline: none; background: #fff; cursor: pointer; padding: 0.5rem; }
 
-    .horizontal-filters { display: flex; gap: 0.75rem; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 1rem 0; overflow-x: auto; scrollbar-width: none; margin-bottom: 1.5rem; }
-    .horizontal-filters::-webkit-scrollbar { display: none; }
+    .horizontal-filters { display: flex; flex-wrap: wrap; gap: 0.75rem; border-top: 1px solid #eee; border-bottom: 1px solid #eee; padding: 1rem 0; margin-bottom: 1.5rem; position: relative; z-index: 100; }
     .filter-pill {
       background: #fff;
       border: 1px solid #e5e5e5;

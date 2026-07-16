@@ -45,8 +45,9 @@ import { CartService } from '../../../services/cart.service';
                 <div class="dropdown-header">
                   <strong>{{ auth.currentUser()?.email }}</strong>
                 </div>
-                <a routerLink="/profile" class="dropdown-item">Mi Perfil</a>
-                <a (click)="auth.logout()" class="dropdown-item logout-link">Salir</a>
+                <a routerLink="/profile" class="dropdown-item" (click)="isDropdownOpen = false">Mi Perfil</a>
+                <a routerLink="/admin" class="dropdown-item" (click)="isDropdownOpen = false">Panel Admin</a>
+                <a (click)="auth.logout(); isDropdownOpen = false" class="dropdown-item logout-link">Salir</a>
               </div>
             }
           </div>

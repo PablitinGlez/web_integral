@@ -38,6 +38,32 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
               <span class="price-badge">{{ selectedProduct.price | currency:'USD' }}</span>
             </div>
           </div>
+
+          <!-- Información del Proveedor -->
+          <div *ngIf="selectedProduct" class="supplier-card-section">
+            <hr class="mini-divider">
+            <div class="supplier-header-title">
+              <span class="material-icons title-icon">local_shipping</span>
+              <h5>Información del Proveedor</h5>
+            </div>
+            <div *ngIf="selectedProduct.supplier; else noSupplier" class="supplier-contact-info">
+              <p class="supplier-name-title">{{ selectedProduct.supplier.name }}</p>
+              <div class="contact-details">
+                <p class="contact-line" *ngIf="selectedProduct.supplier.contact_name">
+                  <span class="lbl">Contacto:</span> {{ selectedProduct.supplier.contact_name }}
+                </p>
+                <p class="contact-line" *ngIf="selectedProduct.supplier.phone">
+                  <span class="lbl">Teléfono:</span> <strong class="phone-highlight">{{ selectedProduct.supplier.phone }}</strong>
+                </p>
+                <p class="contact-line" *ngIf="selectedProduct.supplier.email">
+                  <span class="lbl">Correo:</span> <a href="mailto:{{ selectedProduct.supplier.email }}" class="mail-link">{{ selectedProduct.supplier.email }}</a>
+                </p>
+              </div>
+            </div>
+            <ng-template #noSupplier>
+              <p class="no-supplier-notice">Este zapato no tiene un proveedor asignado.</p>
+            </ng-template>
+          </div>
         </div>
 
         <!-- Panel de Stock -->
@@ -124,6 +150,19 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
     .details-text h4 { margin: 0 0 0.2rem; font-size: 1.1rem; }
     .details-text p { margin: 0 0 0.6rem; color: #888; font-size: 0.9rem; }
     .price-badge { background: #000; color: #fff; padding: 0.3rem 0.8rem; border-radius: 8px; font-size: 0.85rem; font-weight: 700; }
+
+    /* Estilos del Proveedor */
+    .mini-divider { border: none; border-top: 1px solid #f5f5f5; margin: 1.5rem 0; }
+    .supplier-header-title { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.8rem; }
+    .supplier-header-title h5 { margin: 0; font-size: 0.95rem; font-weight: 700; color: #000; }
+    .title-icon { font-size: 1.15rem; color: #555; }
+    .supplier-name-title { font-weight: 600; font-size: 0.95rem; color: #000; margin: 0 0 0.5rem 0; }
+    .contact-details { display: flex; flex-direction: column; gap: 0.3rem; }
+    .contact-line { margin: 0; font-size: 0.85rem; color: #555; }
+    .lbl { color: #888; font-weight: 500; }
+    .phone-highlight { color: #000; font-weight: 700; }
+    .mail-link { color: #000; text-decoration: underline; font-weight: 500; }
+    .no-supplier-notice { font-size: 0.85rem; color: #aaa; margin: 0; font-style: italic; }
 
     /* Stock Panel */
     .stock-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
