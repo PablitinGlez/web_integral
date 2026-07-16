@@ -112,6 +112,12 @@ import { OrderService } from '../../services/order.service';
               }
             </div>
 
+            <div class="actions-bar" style="margin-top: 1.5rem; display: flex; justify-content: flex-start; width: 100%;">
+              <button class="btn-primary" (click)="goToAdmin()" style="width: 100%; justify-content: center; background: #111; color: #fff; border: none; padding: 0.8rem; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s;">
+                <span class="material-icons">dashboard</span> Panel de Administración
+              </button>
+            </div>
+
             <div class="actions-bar" style="margin-top: 2rem; display: flex; justify-content: flex-start; width: 100%;">
               <button class="btn-logout" (click)="logout()" style="width: 100%; justify-content: center;">
                 <span class="material-icons">logout</span> Cerrar sesión
@@ -571,6 +577,10 @@ export class ProfileComponent implements OnInit {
   logout() {
     this.auth.logout();
     this.router.navigate(['/']);
+  }
+
+  goToAdmin() {
+    this.router.navigate(['/admin']);
   }
 
   // --- Direcciones ---

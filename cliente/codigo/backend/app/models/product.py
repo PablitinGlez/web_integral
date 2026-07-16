@@ -11,6 +11,7 @@ class Product(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     brand_id = Column(UUID(as_uuid=True), ForeignKey("brands.id"))
+    supplier_id = Column(UUID(as_uuid=True), ForeignKey("suppliers.id"), nullable=True)
     description = Column(Text)
     price = Column(Numeric(10, 2), nullable=False)
     base_price = Column(Numeric(10, 2))
@@ -25,6 +26,7 @@ class Product(Base):
 
     category = relationship("Category", back_populates="products")
     brand_rel = relationship("Brand", back_populates="products")
+    supplier = relationship("Supplier", back_populates="products")
     inventory = relationship("Inventory", back_populates="product", cascade="all, delete-orphan")
     images = relationship("ProductImage", back_populates="product", cascade="all, delete-orphan")
 
